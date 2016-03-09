@@ -12,16 +12,17 @@ This script is used to interactively deploy a tagged Drupal 7 release.
 Usage: (sudo) bash ${0##*/}
 
 ... and then follow the prompts.
+
 HELP
-exit 0
 }
+
+print_help
 
 # This script must be run as root.
 if [ $(id -u) != 0 ]; then
-  printf "**************************************\n"
-  printf "* Error: You must run this with sudo or root*\n"
-  printf "**************************************\n"
-  print_help
+  printf "**********************************************\n"
+  printf "* Error: You must run this with sudo or root *\n"
+  printf "**********************************************\n"
   exit 1
 fi
 
