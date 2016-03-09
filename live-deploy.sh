@@ -142,14 +142,14 @@ done
 echo ---
 PATHTOWEBROOTDEFAULT=$PATHTOSETTINGS/public_html
 until [ -L "$PATHTOWEBROOT/current" ]; do
-  echo "What is the absolute path to the directory which contains the 'current' symlink for the live site, without trailing slash? Default: '$PATHTOWEBROOT'"
+  echo "What is the absolute path to the directory which contains the 'current' symlink for the live site, without trailing slash? Default: '$PATHTOWEBROOTDEFAULT'"
   read PATHTOWEBROOT
   if [ "x$PATHTOWEBROOT" = "x" ]; then
-    PATHTOWEBROOT=$PATHTOSETTINGS
+    PATHTOWEBROOT=$PATHTOWEBROOTDEFAULT
   fi
   echo "Using: $PATHTOWEBROOT - testing..."
   if [ ! -L "$PATHTOWEBROOT/current" ]; then
-    echo "Oh no! Unable to find a symlink $PATHTOWEBROOT/current - is it definitely there and definitely a symlink?"
+    echo "Oh no! Unable to find the symlink $PATHTOWEBROOT/current - is it definitely there and definitely a symlink?"
   else
     echo "Found $PATHTOWEBROOT/current."
   fi
