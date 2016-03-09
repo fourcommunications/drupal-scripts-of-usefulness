@@ -104,10 +104,10 @@ until [ -f "$ARCHIVELOCATION/$ARCHIVENAME.$ARCHIVEEXTENSION" ]; do
 done
 echo ---
 PATHTOSETTINGSDEFAULT="/home/$USERNAME"
-until [ -f "$PATHTOSETTINGS/local_databases.php" -a -f "$PATHTOSETTINGS/settings.php" ]; do
-  echo "What is the absolute path to the settings.php and local_databases.php files?"
-  echo "They should be located outside of the deployment directory - usually in"
-  echo "$USERNAME's home directory. Symlinks to these files will be created in"
+until [ -f "$PATHTOSETTINGS/local_databases.php" ]; do
+  echo "What is the absolute path to local_databases.php?"
+  echo "It should be located outside of the deployment directory - usually in"
+  echo "$USERNAME's home directory. Symlinks to this file will be created in"
   echo "your deployment directory. Don't enter a trailing slash."
   echo "Default: '$PATHTOSETTINGSDEFAULT'"
   echo -n ":"
@@ -119,12 +119,7 @@ until [ -f "$PATHTOSETTINGS/local_databases.php" -a -f "$PATHTOSETTINGS/settings
   fi
   echo "Using: $PATHTOSETTINGS - testing..."
   if [ -f "$PATHTOSETTINGS/local_databases.php" ]; then
-    echo "Found $PATHTOSETTINGS/local_databases.php. Looking for settings.php..."
-    if [ -f "$PATHTOSETTINGS/settings.php" ]; then
-      echo "Found $PATHTOSETTINGS/settings.php. Hurrah!"
-    else
-      echo "Oh no! Unable to find $PATHTOSETTINGS/settings.php - is it definitely there and definitely a file?"
-    fi
+    echo "Found $PATHTOSETTINGS/local_databases.php."
   else
     echo "Oh no! Unable to find $PATHTOSETTINGS/local_databases.php - is it definitely there and definitely a file?"
   fi
