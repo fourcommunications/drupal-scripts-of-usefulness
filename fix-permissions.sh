@@ -78,14 +78,12 @@ find . -type f -exec chmod 0640 '{}' \;
 printf "Changing ownership and permissions on settings.php and local_databases.php:\n user => "${drupal_user}" \t group => "${httpd_group}"\n"
 # In case it's a symlink...
 chown -h ${drupal_user}:${httpd_group} settings.php
-chmod -h 0770 settings.php
 chown -h ${drupal_user}:${httpd_group} local_databases.php
-chmod -h 0770 local_databases.php
 # If it's a file...
 chown ${drupal_user}:${httpd_group} settings.php
-chmod 0770 settings.php
 chown ${drupal_user}:${httpd_group} local_databases.php
-chmod 0770 local_databases.php
+chmod 0440 settings.php
+chmod 0440 local_databases.php
 
 printf "Changing ownership of \"privatefiles\" directory and its contents:\n user => "${httpd_group}" \t group => "${drupal_user}"\n"
 # In case it's a symlink...
@@ -96,7 +94,7 @@ chown -h ${httpd_group}:${drupal_user} privatefiles
 chown -R ${httpd_group}:${drupal_user} privatefiles
 
 printf "Changing permissions of \"privatefiles\" directory contents to \"0770\"...\n"
-chmod -h 0770 privatefiles
+chmod 0770 privatefiles
 chmod -R 0770 privatefiles
 
 printf "Changing ownership of \"cache\" directory and its contents in \"www\":\n user => "${httpd_group}" \t group => "${drupal_user}"\n"
@@ -110,7 +108,6 @@ printf "Changing permissions of all directories inside all "files" directories i
 for x in sites/*/files; do
   echo "Setting permissions on ${x}:"
   # For symlinks...
-  chmod -h 0770 ${x}
   chown -h ${httpd_group}:${drupal_user} ${x}
 
   # For directories...
