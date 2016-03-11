@@ -281,6 +281,7 @@ if echo "$answer" | grep -iq "^y" ;then
   drush --uri=$SITEURI rr
 fi
 echo ---
+echo "*************************************************************************"
 echo "Step 4 of 6: database updates - if this step freezes for more than ten minutes, you may need to CTRL+C this script and run the remaining commands manually, which are:"
 echo ""
 echo "drush --uri=$SITEURI updb -y; drush --uri=$SITEURI fra -y; drush --uri=$SITEURI cc all"
