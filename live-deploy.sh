@@ -194,6 +194,50 @@ echo "*************************************************************************"
 echo "*************************************************************************"
 echo "*************************************************************************"
 echo ""
+echo "Read the following - it's important. Honestly. THIS BIT IS IMPORTANT! :)"
+echo ""
+echo ""
+echo "1 of 2. Multiple web servers: if you are updating a site which uses more than one web application server - e.g. in a load-balanced setup - you should take all but one web server out of the application pool, run the code deployment and database updates from that server first, then smoke test the site as normal."
+echo ""
+echo "Once the first web server has passed testing, you can then run the code deployment on each remaining webserver, one at a time, before adding each one back into the pool."
+echo ""
+echo "You MUST make absolutely certain that the old and new copies of the Drupal code will not try to run concurrently, due to the high risk of database corruption, lost data, etc."
+echo ""
+echo "If you have already run the code and database updates on the first webserver in the pool, you can safely exit this script here because you do not need to make any further database changes."
+echo ""
+echo -n "Press 'Y' to indicate that you have read and understood this, or any other key to quit the deployment."
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  echo ""
+else
+  echo ""
+  echo "Deployment cancelled."
+  exit
+fi
+echo "2 of 2. Multiple databases: this script assumes you either have only one database server, or you have a multiple-database setup with replication running in such a way that changes to one database are reflected effectively immediately on the other database server(s)."
+echo ""
+echo "If that isn't the case for you, then you should STOP this script and make your own deployment plan."
+echo ""
+echo -n "Press 'Y' to indicate that you have read and understood this, or any other key to quit the deployment."
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  echo ""
+else
+  echo ""
+  echo "Deployment cancelled."
+  exit
+fi
+echo ""
+echo "*************************************************************************"
+echo "*************************************************************************"
+echo "*************************                     ***************************"
+echo "*************************  Ready to deploy?   ***************************"
+echo "*************************                     ***************************"
+echo "*************************************************************************"
+echo "*************************************************************************"
+echo ""
 echo "Arooga alert: are you absolutely sure you want to deploy tag $TAGVERSION from the archive '$ARCHIVENAME'?"
 echo ""
 echo "Pressing 'Y' will take your site offline, re-point the 'current' symlink, run any database updates, and revert ALL features."
