@@ -120,7 +120,7 @@ mkdir -p $DEPLOYDIRECTORY
 
 # ---
 
-FILESPATHDEFAULT="$DEPLOYDIRECTORY/files"
+FILESPATHDEFAULT="$DEPLOYDIRECTORY/../files/$MULTISITENAME"
 until [ -d "$FILESPATH" ]; do
   echo "What is the absolute path of the Drupal files directory (including the
   directory itself), and without trailing slash?
