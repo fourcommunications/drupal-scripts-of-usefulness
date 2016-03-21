@@ -626,3 +626,6 @@ else
 fi
 
 cd $DEPLOYDIRECTORY
+echo "All finished. Enjoy! :)
+
+"
