@@ -87,7 +87,7 @@ if [ "x$DEPLOYDIRECTORY_SUBDIR" = "x" ]; then
 fi
 
 PWD=$(pwd)
-DEPLOYDIRECTORY="$PWD/../builds/$DEPLOYDIRECTORY_SUBDIR"
+DEPLOYDIRECTORY_DEFAULT="$PWD/../builds/$DEPLOYDIRECTORY_SUBDIR"
 
 until [ -d "$DEPLOYDIRECTORY" ]; do
   echo -n "What directory should we build Drupal in, without a trailing slash?
@@ -99,6 +99,8 @@ until [ -d "$DEPLOYDIRECTORY" ]; do
   read DEPLOYDIRECTORY_ENTERED
   if [ ! "x$DEPLOYDIRECTORY_ENTERED" = "x" ]; then
     DEPLOYDIRECTORY=$DEPLOYDIRECTORY_ENTERED
+  else
+    DEPLOYDIRECTORY=DEPLOYDIRECTORY_DEFAULT
   fi
 
   if [ -d "$DEPLOYDIRECTORY" ]; then
