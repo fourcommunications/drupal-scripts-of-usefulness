@@ -87,7 +87,7 @@ if [ "x$DEPLOYDIRECTORY_SUBDIR" = "x" ]; then
 fi
 
 PWD=$(pwd)
-DEPLOYDIRECTORY="$PWD/$DEPLOYDIRECTORY_SUBDIR"
+DEPLOYDIRECTORY="$PWD/../builds/$DEPLOYDIRECTORY_SUBDIR"
 
 until [ -d "$DEPLOYDIRECTORY" ]; do
   echo -n "What directory should we build Drupal in, without a trailing slash?
@@ -120,7 +120,7 @@ mkdir -p $DEPLOYDIRECTORY
 
 # ---
 
-FILESPATHDEFAULT="$DEPLOYDIRECTORY/../files/$MULTISITENAME"
+FILESPATHDEFAULT="$DEPLOYDIRECTORY/../../files/$MULTISITENAME"
 until [ -d "$FILESPATH" ]; do
   echo "What is the absolute path of the Drupal files directory (including the
   directory itself), and without trailing slash?
