@@ -388,7 +388,7 @@ echo -n "
 
 ---
 
-Check out greyhead_common_features? (If you select 'no' here you will be asked if you want to check out drupal7_four_features instead).
+Check out greyhead_common_features?
 Y/n: "
 
 old_stty_cfg=$(stty -g)
@@ -404,95 +404,93 @@ if echo "$answer" | grep -iq "^y" ;then
   Symlinking sites/all/modules/features to $DEPLOYDIRECTORY/drupal7_common_features:"
 
   ln -s $DEPLOYDIRECTORY/drupal7_common_features $DEPLOYDIRECTORY/drupal7_core/www/sites/all/modules/features
-else
 
-  echo -n "
+echo -n "
+
+---
+
+Check out drupal7_four_features? Y/n: "
+
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  cd $DEPLOYDIRECTORY
+  git clone --recursive https://github.com/fourcommunications/drupal7_four_features.git drupal7_four_features
+
+  echo "
 
   ---
 
-  Check out drupal7_four_features? Y/n: "
+  Symlinking sites/all/modules/features to $DEPLOYDIRECTORY/drupal7_four_features:"
 
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^y" ;then
-    cd $DEPLOYDIRECTORY
-    git clone --recursive https://github.com/fourcommunications/drupal7_four_features.git drupal7_four_features
+  ln -s $DEPLOYDIRECTORY/drupal7_four_features $DEPLOYDIRECTORY/drupal7_core/www/sites/all/modules/four-features
+fi
+
+echo -n "
+
+---
+
+Check out drupal7_sites_projects? Y/n: "
+
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  cd $DEPLOYDIRECTORY
+  git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
+  cd drupal7_sites_projects
+  git checkout develop
+
+  if [ ! "x$MULTISITENAME" = "x" ]; then
+    MULTISITELOCATION="$DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME"
+
+    if [ -d "$MULTISITELOCATION" ]; then
+      echo "
+
+      ---
+
+      Symlinking $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME to $MULTISITELOCATION:"
+
+      ln -s $MULTISITELOCATION $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME
+    else
+      echo "Multisite directory $MULTISITELOCATION not found."
+    fi
+
+    DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
+    DRUSHALIASLOCATION="$DEPLOYDIRECTORY/drupal7_sites_projects/_drush_aliases/$DRUSHALIASNAME"
+    if [ -f "$DRUSHALIASLOCATION" ]; then
+      echo "
+
+      ---
+
+      Symlinking $DRUSHALIASLOCATION to $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
+
+      if [ -d "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush" ]; then
+        mkdir "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush"
+      fi
+
+      ln -s $DRUSHALIASLOCATION $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME
+    fi
 
     echo "
 
-    ---
+    Symlinking $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME/files to $FILESPATH:"
 
-    Symlinking sites/all/modules/features to $DEPLOYDIRECTORY/drupal7_four_features:"
+    ln -s $FILESPATH $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME/files
 
-    ln -s $DEPLOYDIRECTORY/drupal7_four_features $DEPLOYDIRECTORY/drupal7_core/www/sites/all/modules/features
-  fi
+    if [ ! "x$SITEURI" = "x" ]; then
+      echo "
 
-  echo -n "
+      ---
 
-  ---
+      Creating the settings.this_site_url.info file at $DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
 
-  Check out drupal7_sites_projects? Y/n: "
-
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^y" ;then
-    cd $DEPLOYDIRECTORY
-    git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
-    cd drupal7_sites_projects
-    git checkout develop
-
-    if [ ! "x$MULTISITENAME" = "x" ]; then
-      MULTISITELOCATION="$DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME"
-
-      if [ -d "$MULTISITELOCATION" ]; then
-        echo "
-
-        ---
-
-        Symlinking $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME to $MULTISITELOCATION:"
-
-        ln -s $MULTISITELOCATION $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME
-      else
-        echo "Multisite directory $MULTISITELOCATION not found."
-      fi
-
-      DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
-      DRUSHALIASLOCATION="$DEPLOYDIRECTORY/drupal7_sites_projects/_drush_aliases/$DRUSHALIASNAME"
-      if [ -f "$DRUSHALIASLOCATION" ]; then
-        echo "
-
-        ---
-
-        Symlinking $DRUSHALIASLOCATION to $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
-
-        if [ -d "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush" ]; then
-          mkdir "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush"
-        fi
-
-        ln -s $DRUSHALIASLOCATION $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME
-      fi
+      echo "SETTINGS_SITE_URLS[] = $SITEURI" > "$DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
 
       echo "
 
-      Symlinking $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME/files to $FILESPATH:"
+      Done.
 
-      ln -s $FILESPATH $DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME/files
-
-      if [ ! "x$SITEURI" = "x" ]; then
-        echo "
-
-        ---
-
-        Creating the settings.this_site_url.info file at $DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
-
-        echo "SETTINGS_SITE_URLS[] = $SITEURI" > "$DEPLOYDIRECTORY/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
-
-        echo "
-
-        Done.
-
-        "
-      fi
+      "
     fi
   fi
 fi
