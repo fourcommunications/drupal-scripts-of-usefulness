@@ -108,7 +108,7 @@ until [ -d "$DEPLOYDIRECTORY" ]; do
   ***************************************************************
   "
   else
-    mkdir $DEPLOYDIRECTORY
+    mkdir -p $DEPLOYDIRECTORY
   fi
 done
 
