@@ -511,20 +511,95 @@ ln -s $DEPLOYDIRECTORY/drupal7_core/profiles/greyhead
 
 # ---
 
-echo "
+echo -n "
 
 ---
 
-Copying local_databases.php and local_settings.php to $DEPLOYDIRECTORY/drupal7_core.
+Do you already have local_databases.php and local_settings.php files or do you
+need to create new ones from the multisite template?
 
-You will need to manually configure the database connection as this script
-isn't awesome enough to do that for you yet:"
+Y/n: "
 
-LOCALDATABASESFILEPATH="$DEPLOYDIRECTORY/drupal7_core/local_databases.php"
-cp $DEPLOYDIRECTORY/drupal7_multisite_template/local_databases.template.php $LOCALDATABASESFILEPATH
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  # Yes, get the files' absolute path.
+  EXISTING_LOCALSETTINGSPATH_DEFAULT="$DEPLOYDIRECTORY/../local_settings.php"
 
-LOCALSETTINGSFILEPATH="$DEPLOYDIRECTORY/drupal7_core/local_settings.php"
-cp $DEPLOYDIRECTORY/drupal7_multisite_template/local_settings.template.php $LOCALSETTINGSFILEPATH
+  until [ -f "$EXISTING_LOCALSETTINGSPATH" ]; do
+    echo -n "What is the absolute path to the local_settings.php file, including the filename?
+
+    Leave blank to use the default: '$EXISTING_LOCALSETTINGSPATH_DEFAULT'
+    :"
+    read EXISTING_LOCALSETTINGSPATH_ENTERED
+    if [ ! "x$EXISTING_LOCALSETTINGSPATH_ENTERED" = "x" ]; then
+      EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_ENTERED
+    else
+      EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_DEFAULT
+    fi
+
+    if [ ! -f "$EXISTING_LOCALSETTINGSPATH" ]; then
+      echo "Oops! '$EXISTING_LOCALSETTINGSPATH' either doesn't exist or isn't accessible. Please try again..."
+    fi
+  done
+
+  EXISTING_LOCALDATABASESPATH_DEFAULT="$DEPLOYDIRECTORY/../local_databases.php"
+
+  until [ -f "$EXISTING_LOCALDATABASESPATH" ]; do
+    echo -n "What is the absolute path to the local_databases.php file, including the filename?
+
+    Leave blank to use the default: '$EXISTING_LOCALDATABASESPATH_DEFAULT'
+    :"
+    read EXISTING_LOCALDATABASESPATH_ENTERED
+    if [ ! "x$EXISTING_LOCALDATABASESPATH_ENTERED" = "x" ]; then
+      EXISTING_LOCALDATABASESPATH=$EXISTING_LOCALDATABASESPATH_ENTERED
+    else
+      EXISTING_LOCALDATABASESPATH=$EXISTING_LOCALDATABASESPATH_DEFAULT
+    fi
+
+    if [ ! -f "$EXISTING_LOCALDATABASESPATH" ]; then
+      echo "Oops! '$EXISTING_LOCALDATABASESPATH' either doesn't exist or isn't accessible. Please try again..."
+    fi
+  done
+
+  # Symlink local_settings and local_databases.
+  ln -s $EXISTING_LOCALDATABASESPATH "$DEPLOYDIRECTORY/drupal7_core/local_databases.php"
+  ln -s $EXISTING_LOCALSETTINGSPATH "$DEPLOYDIRECTORY/drupal7_core/local_settings.php"
+
+  # Is there a Drush alias?
+  if [ -f "$DRUSHALIASLOCATION" ]; then
+    echo "
+
+    ---
+
+    Symlinking $DRUSHALIASLOCATION to $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
+
+    if [ -d "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush" ]; then
+      mkdir "$DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush"
+    fi
+
+    ln -s $DRUSHALIASLOCATION $DEPLOYDIRECTORY/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME
+  fi
+
+else
+  # No.
+  echo "
+
+  ---
+
+  Copying local_databases.php and local_settings.php to $DEPLOYDIRECTORY/drupal7_core.
+
+  You will be asked for the database connection details shortly; if you don't
+  want to or can't set them up now, you will need to edit the file at
+  $LOCALDATABASESPATH to set them."
+
+  LOCALDATABASESPATH="$DEPLOYDIRECTORY/drupal7_core/local_databases.php"
+  cp $DEPLOYDIRECTORY/drupal7_multisite_template/local_databases.template.php $LOCALDATABASESPATH
+
+  LOCALSETTINGSFILEPATH="$DEPLOYDIRECTORY/drupal7_core/local_settings.php"
+  cp $DEPLOYDIRECTORY/drupal7_multisite_template/local_settings.template.php $LOCALSETTINGSFILEPATH
+
+fi
 
 # ---
 
@@ -590,12 +665,12 @@ if [ ! "x$MULTISITENAME" = "x" ]; then
 
     ---"
 
-    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" $LOCALDATABASESFILEPATH
-    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" $LOCALDATABASESFILEPATH
-    perl -pi -e "s/{{DATABASENAME}}/$DBNAME/g" $LOCALDATABASESFILEPATH
-    perl -pi -e "s/{{DATABASEUSERNAME}}/$DBUSERNAME/g" $LOCALDATABASESFILEPATH
-    perl -pi -e "s/{{DATABASEPASSWORD}}/$DBPASSWORD/g" $LOCALDATABASESFILEPATH
-    perl -pi -e "s/3306/$DBPORT/g" $LOCALDATABASESFILEPATH
+    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" $LOCALDATABASESPATH
+    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" $LOCALDATABASESPATH
+    perl -pi -e "s/{{DATABASENAME}}/$DBNAME/g" $LOCALDATABASESPATH
+    perl -pi -e "s/{{DATABASEUSERNAME}}/$DBUSERNAME/g" $LOCALDATABASESPATH
+    perl -pi -e "s/{{DATABASEPASSWORD}}/$DBPASSWORD/g" $LOCALDATABASESPATH
+    perl -pi -e "s/3306/$DBPORT/g" $LOCALDATABASESPATH
 
     echo "
 
@@ -603,7 +678,7 @@ if [ ! "x$MULTISITENAME" = "x" ]; then
 
     ****************************************************************************"
 
-    cat $LOCALDATABASESFILEPATH
+    cat $LOCALDATABASESPATH
 
     echo "
     ****************************************************************************
