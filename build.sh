@@ -96,6 +96,9 @@ Using: $MULTISITENAME.
 
 "
 
+# Remove hyphens from $MULTISITENAME, if any exist.
+MULTISITENAMENOHYPHENS=$(echo $MULTISITENAME | sed 's/[\._-]//g')
+
 # ---
 
 echo -n "
@@ -514,9 +517,6 @@ Y/n: "
         if echo "$answer" | grep -iq "^y" ;then
           # Create the Bootstrap sub-subtheme.
 
-          # Remove hyphens from $MULTISITENAME, if any exist.
-          MULTISITENAMENOHYPHENS=$(echo $MULTISITENAME | sed 's/[\._-]//g')
-
           echo "Creating the subtheme $MULTISITENAMENOHYPHENS_bootstrap_subtheme at $BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes:"
 
           cd "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes"
@@ -822,19 +822,10 @@ What is the database port? Leave empty for the default: 3306: "
     # Create the DB connection string and inject into $LOCALDATABASESPATH before
     # "  // {{build-local-dev.sh insert above}}"
 
-    CONNECTIONSTRING="
-  '$MULTISITENAME' => array(
-    '$SITEURI' => array(
-      'database'  => '$DBNAME',
-      'username'  => '$DBUSERNAME',
-      'password'  => '$DBPASSWORD',
-      'port'      => '$DBPORT',
-    ),
-  ),
-
+    CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),
   // {{build-local-dev.sh insert above}}"
 
-  perl -pe 's/  \/\/ {{build-local-dev.sh insert above}}/$CONNECTIONSTRING/e' "$LOCALDATABASESPATH"
+  perl -pe 's/\/\/ {{build-local-dev.sh insert above}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH"
 
 #    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" "$LOCALDATABASESPATH"
 #    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" "$LOCALDATABASESPATH"
