@@ -1258,6 +1258,8 @@ Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leav
 
 Beginning install..."
 
+    cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+
     drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
 
     echo "
@@ -1282,7 +1284,8 @@ Clearing caches..."
     drush --uri="$SITEURI" cc all
 
     # Open the site in a web browser.
-    ./script-components/open-url.sh "$PROTOCOL://$SITEURI"
+    COMMAND="$STARTINGDIRECTORY/script-components/open-url.sh $PROTOCOL://$SITEURI"
+    eval ${COMMAND}
 
     echo "
 *************************************************************************
