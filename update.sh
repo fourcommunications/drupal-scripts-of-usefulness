@@ -224,8 +224,8 @@ Updating $DIRECTORYNAME..."
       git submodule update --recursive
 
       if [ "$PUSHORIGIN" = 1 ]; then
-        echo "Pushing all to origin..."
-        git push --all
+        echo "Pushing branch $BRANCH to origin..."
+        git push
       fi
     else
       echo "
