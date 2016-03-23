@@ -326,6 +326,7 @@ cd "$BUILDPATH"
 git clone --recursive "https://github.com/$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
 cd "$BUILDPATH/drupal7_core"
 git checkout master
+git config core.fileMode false
 
 # ---
 
@@ -393,6 +394,7 @@ cd "$BUILDPATH"
 git clone --recursive "https://github.com/$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
 cd "$BUILDPATH/drupal7_sites_common"
 git checkout master
+git config core.fileMode false
 
 # ---
 
@@ -464,6 +466,7 @@ if [ ${BUILDTYPE} = "LOCAL" ]; then
   git clone --recursive "https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
   cd "$BUILDPATH/drupal7_multisite_template"
   git checkout master
+  git config core.fileMode false
 
   # ---
 
@@ -521,7 +524,7 @@ What is the Github account from which you want to clone the greyhead_multisitema
 : "
 read GITHUBUSER_MULTISITEMAKER_ENTERED
 if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
-  GITHUBUSER_MULTISITEMAKER=$GITHUBUSER_MULTISITEMAKER_ENTERED
+  GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_MULTISITEMAKER_ENTERED"
 fi
 echo "Using: $GITHUBUSER_MULTISITEMAKER
 
@@ -531,6 +534,7 @@ cd "$BUILDPATH"
 git clone --recursive "https://github.com/$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
 cd "$BUILDPATH/greyhead_multisitemaker"
 git checkout master
+git config core.fileMode false
 
 # ---
 
@@ -564,7 +568,73 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   REMOTE="https://github.com/$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
 
-  git remote add upstream $REMOTE
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "
+  Continuing...
+  "
+fi
+
+# Now drupal-scripts-of-usefulness.
+GITHUBUSER_SCRIPTS="$GITHUBUSER_MULTISITEMAKER"
+
+echo -n "
+*************************************************************************
+
+What is the Github account from which you want to clone the drupal-scripts-of-usefulness repo? Leave blank to use the default: '$GITHUBUSER_SCRIPTS'
+: "
+read GITHUBUSER_SCRIPTS_ENTERED
+if [ ! "x$GITHUBUSER_SCRIPTS_ENTERED" = "x" ]; then
+  GITHUBUSER_SCRIPTS="$GITHUBUSER_SCRIPTS_ENTERED"
+fi
+echo "Using: $GITHUBUSER_SCRIPTS
+
+Cloning Drupal multisite template from $GITHUBUSER_SCRIPTS..."
+
+cd "$BUILDPATH"
+git clone --recursive "https://github.com/$GITHUBUSER_SCRIPTS/greyhead_multisitemaker.git" greyhead_multisitemaker
+cd "$BUILDPATH/greyhead_multisitemaker"
+git checkout master
+git config core.fileMode false
+
+# ---
+
+echo -n "
+*************************************************************************
+
+Do you want to add an upstream remote for drupal-scripts-of-usefulness? E.g. if this is a
+forked repo, you can add the fork's source repo so you can then pull in changes
+by running: git fetch upstream; git checkout master; git merge upstream/master
+
+Y/n: "
+
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  # Add remotes.
+  GITHUBUSER_SCRIPTS_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE"
+  echo -v "
+*************************************************************************
+
+What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_REMOTE'
+: "
+  read GITHUBUSER_SCRIPTS_REMOTE_ENTERED
+  if [ ! "x$GITHUBUSER_SCRIPTS_REMOTE_ENTERED" = "x" ]; then
+    GITHUBUSER_SCRIPTS_REMOTE="$GITHUBUSER_SCRIPTS_REMOTE_ENTERED"
+  fi
+
+  cd "$BUILDPATH/greyhead_multisitemaker"
+
+  echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
+
+  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/greyhead_multisitemaker.git"
+
+  git remote add upstream "$REMOTE"
 
   echo "Remote '$REMOTE' added. Please check the following output is correct:
 
@@ -640,61 +710,66 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^1" ;then
   # fourcomms
-  PROJECTSCHECKOUT=1
+  PROJECTSCHECKOUT="four"
 elif echo "$answer" | grep -iq "^2" ;then
   # alexharries
-  PROJECTSCHECKOUT=2
+  PROJECTSCHECKOUT="greyhead"
 elif echo "$answer" | grep -iq "^3" ;then
   # other
-  PROJECTSCHECKOUT=3
+  PROJECTSCHECKOUT="custom"
 elif echo "$answer" | grep -iq "^4" ;then
   # none
-  PROJECTSCHECKOUT=4
+  PROJECTSCHECKOUT="create"
 fi
 
-#if [ "$PROJECTSCHECKOUT" = 1 ]; then
-#  git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
-#  cd drupal7_sites_projects
-#  git checkout "$PROJECTSBRANCH"
-#fi
-#
-#if [ "$PROJECTSCHECKOUT" = 2 ]; then
-#  git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
-#  cd drupal7_sites_projects
-#  git checkout "$PROJECTSBRANCH"
-#fi
-#
-#if [ "$PROJECTSCHECKOUT" = 3 ]; then
-#  echo -n "
-#*************************************************************************
-#
-#What is the full clone URL of the repo? : "
-#  read CUSTOMPROJECTSCLONEURL
-#
-#  if [ "x$CUSTOMPROJECTSCLONEURL" = "X" ]; then
-#    echo "No URL entered - cancelling and will create an empty dir instead."
-#    PROJECTSCHECKOUT=4
-#  else
-#    echo -n "
-#*************************************************************************
-#
-#What branch should be checked out? (Leave blank for default 'master') : "
-#    read CUSTOMPROJECTSBRANCH
-#
-#    if [ "x$CUSTOMPROJECTSBRANCH" = "X" ]; then
-#      CUSTOMPROJECTSBRANCH="master"
-#    fi
-#
-#    git clone --recursive "$CUSTOMPROJECTSCLONEURL" drupal7_sites_projects
-#    cd drupal7_sites_projects
-#    git checkout "$CUSTOMPROJECTSBRANCH"
-#  fi
-#fi
-#
-#if [ "$PROJECTSCHECKOUT" = 4 ]; then
-#  mkdir -p "$BUILDPATH/drupal7_sites_projects"
-#fi
-#
+if [ "$PROJECTSCHECKOUT" = "four" ]; then
+  PROJECTSCLONEURL="https://github.com/fourcommunications/drupal7_sites_projects.git"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "greyhead" ]; then
+  PROJECTSCLONEURL="https://github.com/alexharries/drupal7_sites_projects.git"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ]; then
+  CUSTOMPROJECTSBRANCH_DEFAULT="develop"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  echo -n "
+*************************************************************************
+
+What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRANCH_DEFAULT') : "
+  read CUSTOMPROJECTSBRANCH
+
+  if [ "x$CUSTOMPROJECTSBRANCH" = "X" ]; then
+    CUSTOMPROJECTSBRANCH=$CUSTOMPROJECTSBRANCH_DEFAULT
+  fi
+
+fi
+
+if [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  echo -n "
+*************************************************************************
+
+What is the full clone URL of the repo? : "
+  read PROJECTSCLONEURL
+
+  if [ "x$PROJECTSCLONEURL" = "X" ]; then
+    echo "No URL entered - cancelling and will create an empty dir instead."
+    PROJECTSCHECKOUT=4
+  fi
+fi
+
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  git clone --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
+  cd drupal7_sites_projects
+  git checkout "$PROJECTSBRANCH"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "create" ]; then
+  mkdir -p "$BUILDPATH/drupal7_sites_projects"
+fi
+
 #if echo "$answer" | grep -iq "^y" ;then
 #else
 #  echo -n "
@@ -980,6 +1055,18 @@ if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]
   ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
 fi
 
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" ]]; then
+  # Symlink the multisite itself.
+  MULTISITESYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+  MULTISITEPHYSICALPATH="$BUILDPATH/drupal7_sites_common/$MULTISITENAME"
+  if [ -e "$MULTISITESYMLINKPATH" ]; then
+    rm "$MULTISITESYMLINKPATH"
+  fi
+
+  echo "Linking $MULTISITESYMLINKPATH to $MULTISITEPHYSICALPATH:"
+  ln -s "$MULTISITEPHYSICALPATH" "$MULTISITESYMLINKPATH"
+fi
+
 if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/greyhead_multisitemaker" ]]; then
   # Symlink multisitemaker.
   MULTISITEMAKERSYMLINKPATH="$BUILDPATH/drupal7_core/www/multisitemaker"
@@ -1068,19 +1155,19 @@ if [ ! ${BUILDTYPE} = "LIVE" ]; then
     ln -s ${EXISTING_LOCALDATABASESPATH} "$BUILDPATH/drupal7_core/local_databases.php"
     ln -s ${EXISTING_LOCALSETTINGSPATH} "$BUILDPATH/drupal7_core/local_settings.php"
 
-    # Is there a Drush alias?
-    if [ -f "$DRUSHALIASPHYSICALLOCATION" ]; then
-      echo "
-  *************************************************************************
-
-  Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME: "
-
-      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
-        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
-      fi
-
-      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
-    fi
+#    # Is there a Drush alias?
+#    if [ -f "$DRUSHALIASPHYSICALLOCATION" ]; then
+#      echo "
+#  *************************************************************************
+#
+#  Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME: "
+#
+#      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
+#        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
+#      fi
+#
+#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
+#    fi
 
   else
     # No.
@@ -1347,47 +1434,47 @@ Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leav
 
         FEATURESTOENABLE="$FEATURESTOENABLE common_base_modules update_notifications_redirect common_user_roles login_toboggan_settings"
       fi
-    fi
 
-    echo "
+      echo "
 *************************************************************************
 
 Beginning install..."
 
-    cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+      cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
 
-    drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
+      drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
 
-    echo "
+      echo "
 *************************************************************************
 
 Drupal installed - enabling features..."
 
-    drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
+      drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
 
-    echo "
+      echo "
 *************************************************************************
 
 Reverting features..."
 
-    drush --uri="$SITEURI" fra -y
+      drush --uri="$SITEURI" fra -y
 
-    echo "
+      echo "
 *************************************************************************
 
 Clearing caches..."
 
-    drush --uri="$SITEURI" cc all
+      drush --uri="$SITEURI" cc all
 
-    # Open the site in a web browser.
-    COMMAND="$STARTINGDIRECTORY/script-components/open-url.sh $PROTOCOL://$SITEURI"
-    eval ${COMMAND}
+      # Open the site in a web browser.
+      COMMAND="$STARTINGDIRECTORY/script-components/open-url.sh $PROTOCOL://$SITEURI"
+      eval ${COMMAND}
 
-    echo "
+      echo "
 *************************************************************************
 
 You can now browse your site at $PROTOCOL://$SITEURI - yay!"
 
+    fi
   else
     echo "
 *************************************************************************
