@@ -620,53 +620,125 @@ if echo "$answer" | grep -iq "^y" ;then
   ln -s "$BUILDPATH/drupal7_four_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/four-features"
 fi
 
+# drupal7_sites_projects
+
+cd "$BUILDPATH"
 echo -n "
 *************************************************************************
 
-Check out fourcommunications/drupal7_sites_projects (if you have access)?
+Please choose which drupal7_sites_projects directory you want to check
+out or create:
 
-If you choose 'no' here, you will be asked if you want to check out
-'alexharries/drupal7_sites_projects' instead.
+1. fourcommunications/drupal7_sites_projects (restricted access)
+2. alexharries/drupal7_sites_projects (restricted access)
+3. Another git repository and branch of your choosing
+4. No checkout - just create a directory (you're responsible for saving)
 
-Y/n: "
+: "
 
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  cd "$BUILDPATH"
-  git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
-  cd drupal7_sites_projects
-  git checkout "$PROJECTSBRANCH"
-else
-  echo -n "
-*************************************************************************
-
-Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
-
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^y" ;then
-    cd "$BUILDPATH"
-    git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
-    cd drupal7_sites_projects
-    git checkout "$PROJECTSBRANCH"
-  else
-    echo -n "
-*************************************************************************
-
-Create the drupal7_sites_projects directory?
-
-This will allow you to set up a working local Drupal install, if you wish. Note that you will have to figure out how you want to save the work you do in this directory.
-
-Y/n: "
-
-    old_stty_cfg=$(stty -g)
-    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-    if echo "$answer" | grep -iq "^y" ;then
-      mkdir -p "$BUILDPATH/drupal7_sites_projects"
-    fi
-  fi
+if echo "$answer" | grep -iq "^1" ;then
+  # fourcomms
+  PROJECTSCHECKOUT=1
+elif echo "$answer" | grep -iq "^2" ;then
+  # alexharries
+  PROJECTSCHECKOUT=2
+elif echo "$answer" | grep -iq "^3" ;then
+  # other
+  PROJECTSCHECKOUT=3
+elif echo "$answer" | grep -iq "^4" ;then
+  # none
+  PROJECTSCHECKOUT=4
 fi
+
+#if [ "$PROJECTSCHECKOUT" = 1 ]; then
+#  git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
+#  cd drupal7_sites_projects
+#  git checkout "$PROJECTSBRANCH"
+#fi
+#
+#if [ "$PROJECTSCHECKOUT" = 2 ]; then
+#  git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
+#  cd drupal7_sites_projects
+#  git checkout "$PROJECTSBRANCH"
+#fi
+#
+#if [ "$PROJECTSCHECKOUT" = 3 ]; then
+#  echo -n "
+#*************************************************************************
+#
+#What is the full clone URL of the repo? : "
+#  read CUSTOMPROJECTSCLONEURL
+#
+#  if [ "x$CUSTOMPROJECTSCLONEURL" = "X" ]; then
+#    echo "No URL entered - cancelling and will create an empty dir instead."
+#    PROJECTSCHECKOUT=4
+#  else
+#    echo -n "
+#*************************************************************************
+#
+#What branch should be checked out? (Leave blank for default 'master') : "
+#    read CUSTOMPROJECTSBRANCH
+#
+#    if [ "x$CUSTOMPROJECTSBRANCH" = "X" ]; then
+#      CUSTOMPROJECTSBRANCH="master"
+#    fi
+#
+#    git clone --recursive "$CUSTOMPROJECTSCLONEURL" drupal7_sites_projects
+#    cd drupal7_sites_projects
+#    git checkout "$CUSTOMPROJECTSBRANCH"
+#  fi
+#fi
+#
+#if [ "$PROJECTSCHECKOUT" = 4 ]; then
+#  mkdir -p "$BUILDPATH/drupal7_sites_projects"
+#fi
+#
+#if echo "$answer" | grep -iq "^y" ;then
+#else
+#  echo -n "
+#*************************************************************************
+#
+#Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
+#
+#  old_stty_cfg=$(stty -g)
+#  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#  if echo "$answer" | grep -iq "^y" ;then
+#    cd "$BUILDPATH"
+#    git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
+#    cd drupal7_sites_projects
+#    git checkout "$PROJECTSBRANCH"
+#  else
+#    echo -n "
+#*************************************************************************
+#
+#Check out another alexharries/drupal7_sites_projects (if you have access)? Y/n: "
+#
+#    old_stty_cfg=$(stty -g)
+#    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#    if echo "$answer" | grep -iq "^y" ;then
+#      cd "$BUILDPATH"
+#      git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
+#      cd drupal7_sites_projects
+#      git checkout "$PROJECTSBRANCH"
+#    else
+#    echo -n "
+#*************************************************************************
+#
+#Create the drupal7_sites_projects directory?
+#
+#This will allow you to set up a working local Drupal install, if you wish. Note that you will have to figure out how you want to save the work you do in this directory.
+#
+#Y/n: "
+#
+#    old_stty_cfg=$(stty -g)
+#    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#    if echo "$answer" | grep -iq "^y" ;then
+#      mkdir -p "$BUILDPATH/drupal7_sites_projects"
+#    fi
+#  fi
+#fi
 
 if [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
   # If Drupal core and drupal7_sites_common were checked out ok, and we have
