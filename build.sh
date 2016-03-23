@@ -615,26 +615,30 @@ Y/n: "
         old_stty_cfg=$(stty -g)
         stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
         if echo "$answer" | grep -iq "^y" ;then
-          perl -pi -e "s/{{MULTISITENAMENOHYPHENS}}/$MULTISITENAMENOHYPHENS/g" "$DRUSHALIASLOCATION"
-          perl -pi -e "s/{{${BUILDTYPE}$BUILDPATH}}/$BUILDPATH/g" "$DRUSHALIASLOCATION"
+          echo "Ha! Fooled you! This script can't set up the drush alias because bash/perl is a pain in the arse at replacing a placeholder with a slash. If you can figure it out, please help yourself to a biscuit. You've earnt it."
 
-          if [ ! "x$SITEURI" = "x" ]; then
-            perl -pi -e "s/{{${BUILDTYPE}$SITEURI}}/$SITEURI/g" "$DRUSHALIASLOCATION"
-          fi
-
-          if [ ! "x$DRUSHREMOTEHOST" = "x" ]; then
-            perl -pi -e "s/{{${BUILDTYPE}$DRUSHREMOTEHOST}}/$DRUSHREMOTEHOST/g" "$DRUSHALIASLOCATION"
-          fi
-
-          if [ ! "x$DRUSHREMOTEUSER" = "x" ]; then
-            perl -pi -e "s/{{${BUILDTYPE}$DRUSHREMOTEUSER}}/$DRUSHREMOTEUSER/g" "$DRUSHALIASLOCATION"
-          fi
-
-  #        perl -pi -e "s/{{$BUILDTYPE}}/$/g" "$DRUSHALIASLOCATION"
-
-          git add "$DRUSHALIASLOCATION"
-
-          echo "Alias file configured. Please verify it's okay."
+#          perl -pi -e "s/{{MULTISITENAMENOHYPHENS}}/$MULTISITENAMENOHYPHENS/g" "$DRUSHALIASLOCATION"
+#          perl -pi -e "s/{{$SERVERTYPE-user}}/$USERNAME/g" "$USERNAMESHORT.aliases.drushrc.php"
+#
+#          perl -pi -e "s/{{$BUILDTYPE-BUILDPATH}}/$BUILDPATH/g" "$DRUSHALIASLOCATION"
+#
+#          if [ ! "x$SITEURI" = "x" ]; then
+#            perl -pi -e "s/{{${BUILDTYPE}SITEURI}}/$ENV{SITEURI}/g" "$DRUSHALIASLOCATION"
+#          fi
+#
+#          if [ ! "x$DRUSHREMOTEHOST" = "x" ]; then
+#            perl -pi -e "s/{{${BUILDTYPE}DRUSHREMOTEHOST}}/$ENV{DRUSHREMOTEHOST}/g" "$DRUSHALIASLOCATION"
+#          fi
+#
+#          if [ ! "x$DRUSHREMOTEUSER" = "x" ]; then
+#            perl -pi -e "s/{{${BUILDTYPE}DRUSHREMOTEUSER}}/$ENV{DRUSHREMOTEUSER}/g" "$DRUSHALIASLOCATION"
+#          fi
+#
+#  #        perl -pi -e "s/{{$BUILDTYPE}}/$/g" "$DRUSHALIASLOCATION"
+#
+#          git add "$DRUSHALIASLOCATION"
+#
+#          echo "Alias file configured. Please verify it's okay."
 
         fi
 
@@ -855,7 +859,7 @@ What is the database port? Leave empty for the default: 3306: "
     CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),
   // {{BUILDSHINSERT}}"
 
-  perl -pe 's/\/\/ {{BUILDSHINSERT}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH"
+  perl -pe 's/\/\/ {{BUILDSHINSERT}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH" > "$LOCALDATABASESPATH"
 
 #    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" "$LOCALDATABASESPATH"
 #    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" "$LOCALDATABASESPATH"
