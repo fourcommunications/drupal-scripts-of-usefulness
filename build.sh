@@ -597,8 +597,8 @@ echo "Using: $GITHUBUSER_SCRIPTS
 Cloning Drupal multisite template from $GITHUBUSER_SCRIPTS..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_SCRIPTS/greyhead_multisitemaker.git" greyhead_multisitemaker
-cd "$BUILDPATH/greyhead_multisitemaker"
+git clone --recursive "https://github.com/$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
+cd "$BUILDPATH/scripts-of-usefulness"
 git checkout master
 git config core.fileMode false
 
@@ -628,11 +628,11 @@ What is the upstream Github account to pull changes from? Leave blank to use the
     GITHUBUSER_SCRIPTS_REMOTE="$GITHUBUSER_SCRIPTS_REMOTE_ENTERED"
   fi
 
-  cd "$BUILDPATH/greyhead_multisitemaker"
+  cd "$BUILDPATH/scripts-of-usefulness"
 
   echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/greyhead_multisitemaker.git"
+  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
