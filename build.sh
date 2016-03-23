@@ -91,11 +91,15 @@ drupal7_core/www/sites/all/modules/features
 Or: (Four Communications only) drupal7_four_features, at
 drupal7_core/www/sites/all/modules/four-features
 
-(Optional, depending on your access) drupal7_sites_projects: the Projects
-directory for Greyhead or Four Communications, where you can create a multisite
-directory containing code (modules, themes, etc) which is specifically for a
-particular Drupal project. Individual projects will be symlinked into
-drupal7_core/www/sites/[project directory name]
+drupal7_sites_projects: the directory where your individual multisite projects
+are kept. This will either be a checkout from a repo URL you specify,
+one of two pre-configured Github repos (as long as you have access to clone
+them), or a freshly-created directory which you will need to save, e.g. by
+creating a git repository for.
+
+This will contain the multisite directory with code (modules, themes, etc)
+specifically for this Drupal website build. Individual projects' directories
+are then symlinked into the drupal7_core/www/sites/ directory.
 
 greyhead_multisitemaker: Multisite Maker is a quick 'n dirty way for you to
 let non-technical Drupal users self-serve by setting up their own throwaway
@@ -254,8 +258,12 @@ Using: $BUILDPATH.
 # restarting of the script, if interrupted.
 mkdir "$BUILDPATH/build-information"
 
-# Create a file to indicate the build type.
-touch "$BUILDPATH/build-information/BUILDTYPE-$BUILDTYPE.txt"
+# Create files to represent variables.
+echo "$BUILDPATH" > "$BUILDPATH/build-information/BUILDPATH.txt"
+echo "$BUILDTYPE" > "$BUILDPATH/build-information/BUILDTYPE.txt"
+echo "$SITEURI" > "$BUILDPATH/build-information/SITEURI.txt"
+echo "$MULTISITENAME" > "$BUILDPATH/build-information/MULTISITENAME.txt"
+echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 
 # ---
 
@@ -275,9 +283,9 @@ if [ ! ${BUILDTYPE} = "LIVE" ]; then
   Default: '$FILESPATHDEFAULT': "
     read FILESPATHENTERED
     if [ "x$FILESPATHENTERED" = "x" ]; then
-      FILESPATH=$FILESPATHDEFAULT
+      FILESPATH="$FILESPATHDEFAULT"
     else
-      FILESPATH=$FILESPATHENTERED
+      FILESPATH="$FILESPATHENTERED"
     fi
     echo "
 
@@ -571,46 +579,6 @@ fi
 # Download Drupal 7 core.
 "$STARTINGDIRECTORY/script-components/download-drupal7-core.sh" --buildpath="$BUILDPATH" --drupalversion=7
 
-# Create symlinks.
-echo "
-*************************************************************************
-
-";
-
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]]; then
-  # Symlink common first.
-  COMMONSITESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites"
-  COMMONSITESPHYSICALPATH="$BUILDPATH/drupal7_sites_common"
-  if [ -e "$COMMONSITESSYMLINKPATH" ]; then
-    rm "$COMMONSITESSYMLINKPATH"
-  fi
-
-  echo "Linking $COMMONSITESSYMLINKPATH to $COMMONSITESPHYSICALPATH:"
-  ln -s "$COMMONSITESPHYSICALPATH" "$COMMONSITESSYMLINKPATH"
-
-  # Symlink drush aliases.
-  DRUSHALIASESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/all/drush"
-  DRUSHALIASESPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
-  if [ -e "$DRUSHALIASESSYMLINKPATH" ]; then
-    rm
-  fi
-
-  echo "Linking $DRUSHALIASESSYMLINKPATH to $DRUSHALIASESPHYSICALPATH:"
-  ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
-fi
-
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/greyhead_multisitemaker" ]]; then
-  # Symlink multisitemaker.
-  MULTISITEMAKERSYMLINKPATH="$BUILDPATH/drupal7_core/www/multisitemaker"
-  MULTISITEMAKERPHYSICALPATH="$BUILDPATH/greyhead_multisitemaker"
-  if [ -e "$MULTISITEMAKERSYMLINKPATH" ]; then
-    rm "$MULTISITEMAKERSYMLINKPATH"
-  fi
-
-  echo "Linking $MULTISITEMAKERSYMLINKPATH to $MULTISITEMAKERPHYSICALPATH:"
-  ln -s "$MULTISITEMAKERPHYSICALPATH" "$MULTISITEMAKERSYMLINKPATH"
-fi
-
 echo -n "
 *************************************************************************
 
@@ -682,6 +650,21 @@ Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
     git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
     cd drupal7_sites_projects
     git checkout "$PROJECTSBRANCH"
+  else
+    echo -n "
+*************************************************************************
+
+Create the drupal7_sites_projects directory?
+
+This will allow you to set up a working local Drupal install, if you wish. Note that you will have to figure out how you want to save the work you do in this directory.
+
+Y/n: "
+
+    old_stty_cfg=$(stty -g)
+    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+    if echo "$answer" | grep -iq "^y" ;then
+      mkdir -p "$BUILDPATH/drupal7_sites_projects"
+    fi
   fi
 fi
 
@@ -880,16 +863,6 @@ Leave blank for the default '$MULTISITENAMENOHYPHENS': "
 #      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
     fi
 
-    # Only symlink to files if we're not building for live.
-    if [ ! ${BUILDTYPE} = "LIVE" ]; then
-      echo "
-*************************************************************************
-
-Symlinking $BUILDPATH/drupal7_core/www/sites/$MULTISITENAME/files to $FILESPATH: "
-
-      ln -s "$FILESPATH" "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME/files"
-    fi
-
     if [ ! "x$SITEURI" = "x" ]; then
       echo "
 *************************************************************************
@@ -905,6 +878,57 @@ Creating the settings.this_site_url.info file at $BUILDPATH/drupal7_sites_projec
       "
     fi
   fi
+fi
+
+# Create symlinks.
+echo "
+*************************************************************************
+
+";
+
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]]; then
+  # Symlink common first.
+  COMMONSITESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites"
+  COMMONSITESPHYSICALPATH="$BUILDPATH/drupal7_sites_common"
+  if [ -e "$COMMONSITESSYMLINKPATH" ]; then
+    rm "$COMMONSITESSYMLINKPATH"
+  fi
+
+  echo "Linking $COMMONSITESSYMLINKPATH to $COMMONSITESPHYSICALPATH:"
+  ln -s "$COMMONSITESPHYSICALPATH" "$COMMONSITESSYMLINKPATH"
+
+  # Symlink drush aliases.
+  DRUSHALIASESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/all/drush"
+  DRUSHALIASESPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
+  if [ -e "$DRUSHALIASESSYMLINKPATH" ]; then
+    rm
+  fi
+
+  echo "Linking $DRUSHALIASESSYMLINKPATH to $DRUSHALIASESPHYSICALPATH:"
+  ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
+fi
+
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/greyhead_multisitemaker" ]]; then
+  # Symlink multisitemaker.
+  MULTISITEMAKERSYMLINKPATH="$BUILDPATH/drupal7_core/www/multisitemaker"
+  MULTISITEMAKERPHYSICALPATH="$BUILDPATH/greyhead_multisitemaker"
+  if [ -e "$MULTISITEMAKERSYMLINKPATH" ]; then
+    rm "$MULTISITEMAKERSYMLINKPATH"
+  fi
+
+  echo "Linking $MULTISITEMAKERSYMLINKPATH to $MULTISITEMAKERPHYSICALPATH:"
+  ln -s "$MULTISITEMAKERPHYSICALPATH" "$MULTISITEMAKERSYMLINKPATH"
+fi
+
+# Only symlink to files if we're not building for live, if the multisite dir
+# is set up, and there isn't already a files link/directory.
+if [[ ! ${BUILDTYPE} = "LIVE" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" && ! -e "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files" ]]; then
+  echo "
+*************************************************************************
+
+Symlinking $BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files to $FILESPATH: "
+
+  ln -s "$FILESPATH" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files"
 fi
 
 # ---
