@@ -5,16 +5,72 @@ clear
 # Note the starting directory.
 STARTINGDIRECTORY=$(pwd)
 
-echo -n "
+echo "
 *************************************************************************
 
-This is a rough and ready script to build a local Drupal codebase with
-which you can edit code and commit back to the parent repos.
+This is a rough and ready script to build a Drupal codebase.
+
+Local, development and staging builds contain the Git repositories so you
+can make changes and commit them back to the remotes.
+
+Live builds don't contain any Git files, database credentials, the Drupal
+files directory, or other development tools, and are designed to be
+uploaded to a live server for deployment with the deploy.sh script.
 
 *************************************************************************
 
-Once this script has completed, you will have a directory which contains the
-following Git repositories:
+Once this script has completed, you will have a directory structure
+similar to this (not all contents shown for brevity, and the live
+build structure won't contain all these parts):
+
+/ drupal7_core
+  / configuration
+  / patches
+  / privatefiles
+  / profiles
+    / greyhead
+  / www
+    / (Drupal 7 - index.php, cron.php, etc)
+    / sites -> symlink to /drupal7_sites_common
+/ drupal7_sites_common
+  / all
+    / drush -> symlink to /drupal7_sites_projects/_drush_aliases
+    / libraries
+    / modules
+      / contrib
+      / custom
+        / greyhead_* -> various greyhead modules (Git submodules)
+      / features -> optional symlink to /drupal7_common_features
+      / four-features -> optional symlink to /drupal7_four_features
+    / themes
+      / bootstrap
+      / greyhead_bootstrap (Git submodule)
+  / default
+  / [your multisite name] -> optional symlink to /drupal7_sites_projects/[your multisite name]
+  . sites.php
+/ drupal7_sites_projects
+  / _drush_aliases
+  / [your multisite name]
+    / modules
+      / custom
+        / project_customisations (custom module)
+    / themes
+      / [your project name]_bootstrap_subtheme (optional)
+    / files -> symlink to the project's files directory
+    . settings.php
+    . settings.site_urls.php
+/ drupal7_multisite_template
+/ greyhead_multisitemaker
+. local_databases.php (your database settings file)
+. local_settings.php
+
+*************************************************************************
+
+Note: your webroot should point to /drupal7_core/www
+
+*************************************************************************
+
+These directories will contain the following Git repositories:
 
 drupal7_core: this contains a copy of the latest release of Drupal 7, and the
 code which configures the Drupal site for your local installation such as
@@ -27,13 +83,18 @@ will be symlinked into drupal7_core/www/sites
 drupal7_multisite_template: provides a multisite directory to create a new
 multisite in the codebase.
 
-A choice of two Features repos - either greyhead_common_featues or (Four only)
-drupal7_four_features, which is symlinked into
+A choice of two Features repos:
+
+Either: alexharries/drupal7_common_features, at
 drupal7_core/www/sites/all/modules/features
 
-drupal7_sites_projects: the Projects directory for Greyhead/Four
-Communications, where you can work on code which is specifically for a
-particular Four Drupal project. Individual projects will be symlinked into
+Or: (Four Communications only) drupal7_four_features, at
+drupal7_core/www/sites/all/modules/four-features
+
+(Optional, depending on your access) drupal7_sites_projects: the Projects
+directory for Greyhead or Four Communications, where you can create a multisite
+directory containing code (modules, themes, etc) which is specifically for a
+particular Drupal project. Individual projects will be symlinked into
 drupal7_core/www/sites/[project directory name]
 
 greyhead_multisitemaker: Multisite Maker is a quick 'n dirty way for you to
@@ -55,7 +116,17 @@ until [ ! "x$BUILDTYPE" = "x" ]; do
 2: DEV
 3: STAGING
 
-(To perform a live build, see live-deploy.sh)
+(Live builds will be coming shortly. To deploy a live build, see live-deploy.sh)
+
+
+Important information about branches
+------------------------------------
+Note that LOCAL and DEV builds will check out the 'develop' branch of the
+drupal7_sites_projects repo, if you choose to download one; STAGING builds
+will use the 'rc' branch, while LIVE builds use MASTER, so you need to make
+sure you have merged from the dev branch to rc to move from development into
+testing, and merge from the rc branch to master once everything passes
+testing.
 
 : "
 
@@ -67,10 +138,21 @@ until [ ! "x$BUILDTYPE" = "x" ]; do
     BUILDTYPE="DEV"
   elif echo "$answer" | grep -iq "^3" ;then
     BUILDTYPE="STAGING"
+  elif echo "$answer" | grep -iq "^4" ;then
+    BUILDTYPE="LIVE"
   fi
 done
 
 echo "Build type: $BUILDTYPE"
+
+# Determine the branches to use for projects.
+if [[ ${BUILDTYPE} = "LOCAL" || $BUILDTYPE = "DEV" ]]; then
+  PROJECTSBRANCH="develop"
+elif [[ ${BUILDTYPE} = "STAGING" ]]; then
+  PROJECTSBRANCH="rc"
+elif [[ ${BUILDTYPE} = "LIVE" ]]; then
+  PROJECTSBRANCH="master"
+fi
 
 echo -n "
 *************************************************************************
@@ -104,10 +186,16 @@ MULTISITENAMENOHYPHENS=$(echo $MULTISITENAME | sed 's/[\._-]//g')
 echo -n "
 *************************************************************************
 
-(Optional) What is the URL of the Drupal site, without 'http://' - e.g.
-www.example.com? You need to provide this if you want to configure the
-database connection using this script, or have Drupal automagically create the
+(Optional) What is the URL of this build of the Drupal site, without
+'http://' - e.g. 'www.example.com'?
+
+You need to provide this if you want to configure the database connection
+using this script, or have Drupal automagically create the
 settings.this_site_url.info file.
+
+You must provide this if you are building for a live deployment, unless
+you know that the settings.site_urls.info file contains the live site's
+URL.
 
 :"
 
@@ -157,40 +245,53 @@ Leave blank to use the default: '$BUILDPATH_DEFAULT'
   fi
 done
 
-echo "Using: $BUILDPATH.
+echo "
+Using: $BUILDPATH.
 
 "
 
+# Create a directory to track the build progress - we could use this to allow
+# restarting of the script, if interrupted.
+mkdir "$BUILDPATH/build-information"
+
+# Create a file to indicate the build type.
+touch "$BUILDPATH/build-information/BUILDTYPE-$BUILDTYPE.txt"
+
 # ---
 
-FILESPATHDEFAULT="$BUILDPATH/../../files/$MULTISITENAME"
-until [ -d "$FILESPATH" ]; do
-  echo -n "
-*************************************************************************
+# Only request files path if this isn't a live build.
+if [ ! ${BUILDTYPE} = "LIVE" ]; then
 
-What is the absolute path of the Drupal files directory (including the
-directory itself), and without trailing slash?
+  FILESPATHDEFAULT="$BUILDPATH/../../files/$MULTISITENAME"
+  until [ -d "$FILESPATH" ]; do
+    echo -n "
+  *************************************************************************
 
-A symlink to this directory will be created in your multisite's directory.
+  What is the absolute path of the Drupal files directory (including the
+  directory itself), and without trailing slash?
 
-Default: '$FILESPATHDEFAULT': "
-  read FILESPATHENTERED
-  if [ "x$FILESPATHENTERED" = "x" ]; then
-    FILESPATH=$FILESPATHDEFAULT
-  else
-    FILESPATH=$FILESPATHENTERED
-  fi
-  echo "
+  A symlink to this directory will be created in your multisite's directory.
 
-  Using: $FILESPATH - attempting to make the directory if it doesn't
-  already exist..."
+  Default: '$FILESPATHDEFAULT': "
+    read FILESPATHENTERED
+    if [ "x$FILESPATHENTERED" = "x" ]; then
+      FILESPATH=$FILESPATHDEFAULT
+    else
+      FILESPATH=$FILESPATHENTERED
+    fi
+    echo "
 
-  mkdir -p "$FILESPATH"
+    Using: $FILESPATH - attempting to make the directory if it doesn't
+    already exist..."
 
-  if [ ! -d "$FILESPATH" ]; then
-    echo "Oh no! Unable to create the directory at $FILESPATH - does this script have permission to make directories there?"
-  fi
-done
+    mkdir -p "$FILESPATH"
+
+    if [ ! -d "$FILESPATH" ]; then
+      echo "Oh no! Unable to create the directory at $FILESPATH - does this script have permission to make directories there?"
+    fi
+  done
+
+fi
 
 # ---
 
@@ -243,7 +344,7 @@ Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
 
   read GITHUBUSER_CORE_REMOTE_ENTERED
   if [ ! "x$GITHUBUSER_CORE_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_CORE_REMOTE=$GITHUBUSER_CORE_REMOTE_ENTERED
+    GITHUBUSER_CORE_REMOTE=${GITHUBUSER_CORE_REMOTE_ENTERED}
   fi
 
   cd "$BUILDPATH/drupal7_core"
@@ -252,22 +353,20 @@ Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
 
   REMOTE="https://github.com/$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
 
-  git remote add upstream $REMOTE
+  git remote add upstream ${REMOTE}
 
   echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
   git remote -v
 
-  echo "
-  Continuing...
-  "
+  echo "Continuing..."
 
 fi
 
 # ---
 
-GITHUBUSER_SITES_COMMON=$GITHUBUSER_CORE
+GITHUBUSER_SITES_COMMON=${GITHUBUSER_CORE}
 
 echo -n "
 *************************************************************************
@@ -335,24 +434,94 @@ fi
 
 # ---
 
-GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_SITES_COMMON
+# Only clone multisite template if this is a LOCAL build.
+if [ ${BUILDTYPE} = "LOCAL" ]; then
+
+  GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_SITES_COMMON
+
+  echo -n "
+  *************************************************************************
+
+  What is the Github account from which you want to clone the drupal7_multisite_template repo? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE'
+  : "
+  read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
+  if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
+    GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
+  fi
+  echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
+
+  Cloning Drupal multisite template from $GITHUBUSER_MULTISITE_TEMPLATE..."
+
+  cd "$BUILDPATH"
+  git clone --recursive "https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
+  cd "$BUILDPATH/drupal7_multisite_template"
+  git checkout master
+
+  # ---
+
+  echo -n "
+  *************************************************************************
+
+  Do you want to add an upstream remote for drupal7_multisite_template? E.g. if this is a
+  forked repo, you can add the fork's source repo so you can then pull in changes
+  by running: git fetch upstream; git checkout master; git merge upstream/master
+
+  Y/n: "
+
+  old_stty_cfg=$(stty -g)
+  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+  if echo "$answer" | grep -iq "^y" ;then
+    # Add remotes.
+    GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_SITES_COMMON_REMOTE
+    echo -v "
+  *************************************************************************
+
+  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE'
+  : "
+    read GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
+    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED" = "x" ]; then
+      GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
+    fi
+
+    cd "$BUILDPATH/drupal7_multisite_template"
+
+    echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_REMOTE. Adding remote..."
+
+    REMOTE="https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
+
+    git remote add upstream $REMOTE
+
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+    "
+    git remote -v
+
+    echo "
+    Continuing...
+    "
+
+  fi
+fi
+
+# Now multisitemaker.
+GITHUBUSER_MULTISITEMAKER=$GITHUBUSER_SITES_COMMON
 
 echo -n "
 *************************************************************************
 
-What is the Github account from which you want to clone the drupal7_multisite_template repo? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE'
+What is the Github account from which you want to clone the greyhead_multisitemaker repo? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER'
 : "
-read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
-if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
-  GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
+read GITHUBUSER_MULTISITEMAKER_ENTERED
+if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
+  GITHUBUSER_MULTISITEMAKER=$GITHUBUSER_MULTISITEMAKER_ENTERED
 fi
-echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
+echo "Using: $GITHUBUSER_MULTISITEMAKER
 
-Cloning Drupal multisite template from $GITHUBUSER_MULTISITE_TEMPLATE..."
+Cloning Drupal multisite template from $GITHUBUSER_MULTISITEMAKER..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
-cd "$BUILDPATH/drupal7_multisite_template"
+git clone --recursive "https://github.com/$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
+cd "$BUILDPATH/greyhead_multisitemaker"
 git checkout master
 
 # ---
@@ -360,7 +529,7 @@ git checkout master
 echo -n "
 *************************************************************************
 
-Do you want to add an upstream remote for drupal7_multisite_template? E.g. if this is a
+Do you want to add an upstream remote for greyhead_multisitemaker? E.g. if this is a
 forked repo, you can add the fork's source repo so you can then pull in changes
 by running: git fetch upstream; git checkout master; git merge upstream/master
 
@@ -370,22 +539,22 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_SITES_COMMON_REMOTE
+  GITHUBUSER_MULTISITEMAKER_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE"
   echo -v "
 *************************************************************************
 
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE'
+What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_REMOTE'
 : "
-  read GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
-  if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
+  read GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED
+  if [ ! "x$GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED" = "x" ]; then
+    GITHUBUSER_MULTISITEMAKER_REMOTE="$GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED"
   fi
 
-  cd "$BUILDPATH/drupal7_multisite_template"
+  cd "$BUILDPATH/greyhead_multisitemaker"
 
-  echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_REMOTE. Adding remote..."
+  echo "Using: $GITHUBUSER_MULTISITEMAKER_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
+  REMOTE="https://github.com/$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
 
   git remote add upstream $REMOTE
 
@@ -397,7 +566,6 @@ What is the upstream Github account to pull changes from? Leave blank to use the
   echo "
   Continuing...
   "
-
 fi
 
 # Download Drupal 7 core.
@@ -429,6 +597,18 @@ if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]
 
   echo "Linking $DRUSHALIASESSYMLINKPATH to $DRUSHALIASESPHYSICALPATH:"
   ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
+fi
+
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/greyhead_multisitemaker" ]]; then
+  # Symlink multisitemaker.
+  MULTISITEMAKERSYMLINKPATH="$BUILDPATH/drupal7_core/www/multisitemaker"
+  MULTISITEMAKERPHYSICALPATH="$BUILDPATH/greyhead_multisitemaker"
+  if [ -e "$MULTISITEMAKERSYMLINKPATH" ]; then
+    rm "$MULTISITEMAKERSYMLINKPATH"
+  fi
+
+  echo "Linking $MULTISITEMAKERSYMLINKPATH to $MULTISITEMAKERPHYSICALPATH:"
+  ln -s "$MULTISITEMAKERPHYSICALPATH" "$MULTISITEMAKERSYMLINKPATH"
 fi
 
 echo -n "
@@ -488,7 +668,7 @@ if echo "$answer" | grep -iq "^y" ;then
   cd "$BUILDPATH"
   git clone --recursive https://github.com/fourcommunications/drupal7_sites_projects.git drupal7_sites_projects
   cd drupal7_sites_projects
-  git checkout develop
+  git checkout "$PROJECTSBRANCH"
 else
   echo -n "
 *************************************************************************
@@ -501,7 +681,7 @@ Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
     cd "$BUILDPATH"
     git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
     cd drupal7_sites_projects
-    git checkout develop
+    git checkout "$PROJECTSBRANCH"
   fi
 fi
 
@@ -513,7 +693,7 @@ if [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
     MULTISITEPHYSICALLOCATION="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
     MULTISITESYMLINKLOCATION="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
 
-    if [ ! -d "$MULTISITEPHYSICALLOCATION" ]; then
+    if [[ ! -d "$MULTISITEPHYSICALLOCATION" && -d "$BUILDPATH/drupal7_multisite_template" ]]; then
       echo -p "
 *************************************************************************
 
@@ -526,6 +706,9 @@ Multisite directory $MULTISITEPHYSICALLOCATION not found. Do you want to create 
         # settings.site_urls.info.
         cp -R "$BUILDPATH/drupal7_multisite_template/sites-template" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS"
         perl -pi -e "s/SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/; SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/g" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/settings.site_urls.info"
+
+        MULTISITETHEMEPATH="$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes"
+        MULTISITETHEMETEMPLATEPATH="$MULTISITETHEMEPATH/username_bootstrap_subtheme"
 
         echo -n "
 *************************************************************************
@@ -541,9 +724,9 @@ Y/n: "
         if echo "$answer" | grep -iq "^y" ;then
           # Create the Bootstrap sub-subtheme.
 
-          echo "Creating the subtheme $MULTISITENAMENOHYPHENS_bootstrap_subtheme at $BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes:"
+          echo "Creating the subtheme ${MULTISITENAMENOHYPHENS}_bootstrap_subtheme at $BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes:"
 
-          cd "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes"
+          cd "$MULTISITETHEMEPATH"
           mv username_bootstrap_subtheme "$MULTISITENAMENOHYPHENS"_bootstrap_subtheme
           cd "$MULTISITENAMENOHYPHENS"_bootstrap_subtheme
           mv username_bootstrap_subtheme.info "$MULTISITENAMENOHYPHENS"_bootstrap_subtheme.info
@@ -552,15 +735,22 @@ Y/n: "
           perl -pi -e "s/{{username}}/$MULTISITENAMENOHYPHENS/g" "prepros.cfg"
           perl -pi -e "s/function username/function $MULTISITENAMENOHYPHENS/g" "template.php"
 
-          echo "Done. Committing..."
-          cd ../../..
-
-          git add "./$MULTISITENAME"
-          git commit -m "Setting up $MULTISITENAME multisite directory and subtheme $MULTISITENAMENOHYPHENS_bootstrap_subtheme."
-
-          echo "Committed.
-          "
+          echo "Done."
+        else
+          echo "Removing theme template from $MULTISITETHEMETEMPLATEPATH"
+          rm -r "$MULTISITETHEMETEMPLATEPATH"
         fi
+
+        # Commit and push.
+        echo "Committing..."
+        cd ../../..
+
+        git add "./$MULTISITENAME"
+        git commit -m "Setting up $MULTISITENAME multisite directory."
+        git push
+
+        echo "Committed.
+        "
       fi
     fi
 
@@ -571,28 +761,34 @@ Y/n: "
     ln -s "$MULTISITEPHYSICALLOCATION" "$MULTISITESYMLINKLOCATION"
 
     DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
-    DRUSHALIASLOCATION="$BUILDPATH/drupal7_sites_projects/_drush_aliases/$DRUSHALIASNAME"
+    DRUSHALIASESDIRECTORY="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
+    DRUSHALIASPHYSICALLOCATION="$DRUSHALIASESDIRECTORY/$DRUSHALIASNAME"
 
     # If the alias doesn't exist but the drupal7_sites_projects repo does,
     # we can attempt to create it.
-    if [[ ! -f "$DRUSHALIASLOCATION" && -d "$BUILDPATH/drupal7_sites_projects" ]]; then
+    if [[ ! -f "$DRUSHALIASPHYSICALLOCATION" && -d "$BUILDPATH/drupal7_sites_projects" ]]; then
       echo -n "
 *************************************************************************
 
-Do you want to create the Drush alias file $DRUSHALIASLOCATION? Y/n: "
+Do you want to create the Drush alias file $DRUSHALIASPHYSICALLOCATION? Y/n: "
 
       old_stty_cfg=$(stty -g)
       stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
       if echo "$answer" | grep -iq "^y" ;then
-        cp "$BUILDPATH/drupal7_multisite_template/template.aliases.drushrc.php" "$DRUSHALIASLOCATION"
+        # Make the aliases directory if not present.
+        if [ ! -d "$DRUSHALIASESDIRECTORY" ]; then
+          mkdir -p "$DRUSHALIASESDIRECTORY"
+        fi
+
+        cp "$BUILDPATH/drupal7_multisite_template/template.aliases.drushrc.php" "$DRUSHALIASPHYSICALLOCATION"
       fi
     fi
 
-    if [ -f "$DRUSHALIASLOCATION" ]; then
+    if [ -f "$DRUSHALIASPHYSICALLOCATION" ]; then
 
       # Check whether the alias has been set up for this build type already;
       # if not, offer to add it now.
-      if grep -q "{{${BUILDTYPE}MULTISITENAMENOHYPHENS}}" "$DRUSHALIASLOCATION"; then
+      if grep -q "{{${BUILDTYPE}MULTISITENAMENOHYPHENS}}" "$DRUSHALIASPHYSICALLOCATION"; then
         echo "
 *************************************************************************
 
@@ -615,53 +811,84 @@ Y/n: "
         old_stty_cfg=$(stty -g)
         stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
         if echo "$answer" | grep -iq "^y" ;then
-          echo "Ha! Fooled you! This script can't set up the drush alias because bash/perl is a pain in the arse at replacing a placeholder with a slash. If you can figure it out, please help yourself to a biscuit. You've earnt it."
+#          echo "Ha! Fooled you! This script can't set up the drush alias because bash/perl is a pain in the arse at replacing a placeholder with a slash. If you can figure it out, please help yourself to a biscuit. You've earnt it."
 
-#          perl -pi -e "s/{{MULTISITENAMENOHYPHENS}}/$MULTISITENAMENOHYPHENS/g" "$DRUSHALIASLOCATION"
-#          perl -pi -e "s/{{$SERVERTYPE-user}}/$USERNAME/g" "$USERNAMESHORT.aliases.drushrc.php"
-#
-#          perl -pi -e "s/{{$BUILDTYPE-BUILDPATH}}/$BUILDPATH/g" "$DRUSHALIASLOCATION"
-#
-#          if [ ! "x$SITEURI" = "x" ]; then
-#            perl -pi -e "s/{{${BUILDTYPE}SITEURI}}/$ENV{SITEURI}/g" "$DRUSHALIASLOCATION"
-#          fi
-#
-#          if [ ! "x$DRUSHREMOTEHOST" = "x" ]; then
-#            perl -pi -e "s/{{${BUILDTYPE}DRUSHREMOTEHOST}}/$ENV{DRUSHREMOTEHOST}/g" "$DRUSHALIASLOCATION"
-#          fi
-#
-#          if [ ! "x$DRUSHREMOTEUSER" = "x" ]; then
-#            perl -pi -e "s/{{${BUILDTYPE}DRUSHREMOTEUSER}}/$ENV{DRUSHREMOTEUSER}/g" "$DRUSHALIASLOCATION"
-#          fi
-#
-#  #        perl -pi -e "s/{{$BUILDTYPE}}/$/g" "$DRUSHALIASLOCATION"
-#
-#          git add "$DRUSHALIASLOCATION"
-#
-#          echo "Alias file configured. Please verify it's okay."
+          perl -pi -e "s/{{MULTISITENAMENOHYPHENS}}/$MULTISITENAMENOHYPHENS/g" "$DRUSHALIASPHYSICALLOCATION"
 
-        fi
+#          perl -pi -e "s/{{-user}}/$USERNAME/g" "$USERNAMESHORT.aliases.drushrc.php"
 
-      fi
+          perl -pi -e "s/{{BUILDPATH-$BUILDTYPE}}/$BUILDPATH/g" "$DRUSHALIASPHYSICALLOCATION"
 
-      echo "
+          if [ ! "x$SITEURI" = "x" ]; then
+            echo -n "What is the site URL, without http:// or any trailing slash?: "
+            read SITEURI
+          fi
+
+          perl -pi -e "s/{{SITEURI-$BUILDTYPE}}/$SITEURI/g" "$DRUSHALIASPHYSICALLOCATION"
+
+          if [ ! "x$DRUSHREMOTEHOST" = "x" ]; then
+            if [ "$BUILDTYPE" = "LOCAL" ]; then
+              DRUSHREMOTEHOST="127.0.0.1"
+            else
+              echo -n "What is the remote hostname or IP? Leave blank for the default '$SITEURI': "
+              read DRUSHREMOTEHOST
+
+              if [ "x$DRUSHREMOTEHOST" = "x" ]; then
+                DRUSHREMOTEHOST="127.0.0.1"
+              fi
+            fi
+          fi
+
+          perl -pi -e "s/{{DRUSHREMOTEHOST-$BUILDTYPE}}/$DRUSHREMOTEHOST/g" "$DRUSHALIASPHYSICALLOCATION"
+
+          if [ ! "x$DRUSHREMOTEUSER" = "x" ]; then
+            echo -n "What is the username to run Drush commands as, on the remote host?
+
+This is usually the user account under which the website is hosted, and not www-data.
+
+Leave blank for the default '$MULTISITENAMENOHYPHENS': "
+            read DRUSHREMOTEUSER
+          fi
+
+          perl -pi -e "s/{{DRUSHREMOTEUSER-$BUILDTYPE}}/$DRUSHREMOTEUSER/g" "$DRUSHALIASPHYSICALLOCATION"
+
+          cd "$DRUSHALIASESDIRECTORY"
+          git add "$DRUSHALIASPHYSICALLOCATION"
+          git commit -m "Added Drush alias file for $MULTISITENAME. May be mangled, so please check."
+          git push
+
+          echo "Alias file configured. Maybe. Please verify it's okay:
+
 *************************************************************************
-
-Symlinking $DRUSHALIASLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
-
-      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
-        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
+"
+        cat "$DRUSHALIASPHYSICALLOCATION"
+        echo "
+*************************************************************************
+"
+        fi
       fi
 
-      ln -s "$DRUSHALIASLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
+#      echo "
+#*************************************************************************
+#
+#Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
+#
+#      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
+#        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
+#      fi
+#
+#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
     fi
 
-    echo "
+    # Only symlink to files if we're not building for live.
+    if [ ! ${BUILDTYPE} = "LIVE" ]; then
+      echo "
 *************************************************************************
 
 Symlinking $BUILDPATH/drupal7_core/www/sites/$MULTISITENAME/files to $FILESPATH: "
 
-    ln -s "$FILESPATH" "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME/files"
+      ln -s "$FILESPATH" "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME/files"
+    fi
 
     if [ ! "x$SITEURI" = "x" ]; then
       echo "
@@ -682,286 +909,395 @@ fi
 
 # ---
 
-echo -n "
-*************************************************************************
-
-Do you already have local_databases.php and local_settings.php files (Y) or do you
-need to create new ones from the multisite template (n)?
-
-Y/n: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  # Yes, get the files' absolute path.
-  EXISTING_LOCALSETTINGSPATH_DEFAULT="$BUILDPATH/../local_settings.php"
-
-  until [ -f "$EXISTING_LOCALSETTINGSPATH" ]; do
-    echo -n "
-*************************************************************************
-
-What is the absolute path to the local_settings.php file, including the filename?
-
-Leave blank to use the default: '$EXISTING_LOCALSETTINGSPATH_DEFAULT'
-: "
-    read EXISTING_LOCALSETTINGSPATH_ENTERED
-    if [ ! "x$EXISTING_LOCALSETTINGSPATH_ENTERED" = "x" ]; then
-      EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_ENTERED
-    else
-      EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_DEFAULT
-    fi
-
-    if [ ! -f "$EXISTING_LOCALSETTINGSPATH" ]; then
-      echo "Oops! '$EXISTING_LOCALSETTINGSPATH' either doesn't exist or isn't accessible. Please try again..."
-    fi
-  done
-
-  EXISTING_LOCALDATABASESPATH_DEFAULT="$BUILDPATH/../local_databases.php"
-
-  until [ -f "$EXISTING_LOCALDATABASESPATH" ]; do
-    echo -n "
-*************************************************************************
-
-What is the absolute path to the local_databases.php file, including the filename?
-
-Leave blank to use the default: '$EXISTING_LOCALDATABASESPATH_DEFAULT'
-: "
-    read EXISTING_LOCALDATABASESPATH_ENTERED
-    if [ ! "x$EXISTING_LOCALDATABASESPATH_ENTERED" = "x" ]; then
-      EXISTING_LOCALDATABASESPATH=$EXISTING_LOCALDATABASESPATH_ENTERED
-    else
-      EXISTING_LOCALDATABASESPATH=$EXISTING_LOCALDATABASESPATH_DEFAULT
-    fi
-
-    if [ ! -f "$EXISTING_LOCALDATABASESPATH" ]; then
-      echo "Oops! '$EXISTING_LOCALDATABASESPATH' either doesn't exist or isn't accessible. Please try again..."
-    fi
-  done
-
-  # Symlink local_settings and local_databases.
-  ln -s $EXISTING_LOCALDATABASESPATH "$BUILDPATH/drupal7_core/local_databases.php"
-  ln -s $EXISTING_LOCALSETTINGSPATH "$BUILDPATH/drupal7_core/local_settings.php"
-
-  # Is there a Drush alias?
-  if [ -f "$DRUSHALIASLOCATION" ]; then
-    echo "
-*************************************************************************
-
-Symlinking $DRUSHALIASLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME: "
-
-    if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
-      mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
-    fi
-
-    ln -s "$DRUSHALIASLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
-  fi
-
-else
-  # No.
-  LOCALDATABASESPATH="$BUILDPATH/drupal7_core/local_databases.php"
-
-  echo "
-*************************************************************************
-
-Copying local_databases.php and local_settings.php to $BUILDPATH/drupal7_core.
-
-You will be asked for the database connection details shortly; if you don't
-want to or can't set them up now, you will need to edit the file at
-$LOCALDATABASESPATH to set them."
-
-  cp "$BUILDPATH/drupal7_multisite_template/local_databases.template.php" "$LOCALDATABASESPATH"
-
-  LOCALSETTINGSFILEPATH="$BUILDPATH/drupal7_core/local_settings.php"
-  cp "$BUILDPATH/drupal7_multisite_template/local_settings.template.php" "$LOCALSETTINGSFILEPATH"
-
-fi
-
-# ---
-
-if [ ! "x$MULTISITENAME" = "x" ]; then
+# Only create local_databases.php and local_settings.php files if we're not
+# building for live.
+if [ ! ${BUILDTYPE} = "LIVE" ]; then
   echo -n "
-*************************************************************************
+  *************************************************************************
 
-Do you know the database connection details, and want to set them in $LOCALDATABASESPATH? Y/n: "
+  Do you already have local_databases.php and local_settings.php files (Y) or do you
+  need to create new ones from the multisite template (n)?
+
+  Y/n: "
 
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^y" ;then
-    # Get DB connection details: DB name, username, password, host, and port.
-    until [ ! "x$DBNAME" = "x" ]; do
-      echo -n "
-*************************************************************************
+    # Yes, get the files' absolute path.
+    EXISTING_LOCALSETTINGSPATH_DEFAULT="$BUILDPATH/../local_settings.php"
 
-What is the database name? (required): "
-      read DBNAME
-      if [ "x$DBNAME" = "x" ]; then
-          echo "Oh no! You need to provide the database name. Please go back and try again."
+    until [ -f "$EXISTING_LOCALSETTINGSPATH" ]; do
+      echo -n "
+  *************************************************************************
+
+  What is the absolute path to the local_settings.php file, including the filename?
+
+  Leave blank to use the default: '$EXISTING_LOCALSETTINGSPATH_DEFAULT'
+  : "
+      read EXISTING_LOCALSETTINGSPATH_ENTERED
+      if [ ! "x$EXISTING_LOCALSETTINGSPATH_ENTERED" = "x" ]; then
+        EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_ENTERED
+      else
+        EXISTING_LOCALSETTINGSPATH=$EXISTING_LOCALSETTINGSPATH_DEFAULT
+      fi
+
+      if [ ! -f "$EXISTING_LOCALSETTINGSPATH" ]; then
+        echo "Oops! '$EXISTING_LOCALSETTINGSPATH' either doesn't exist or isn't accessible. Please try again..."
       fi
     done
-    echo "Using: $DBNAME.
 
-    ---"
+    EXISTING_LOCALDATABASESPATH_DEFAULT="$BUILDPATH/../local_databases.php"
 
-    until [ ! "x$DBUSERNAME" = "x" ]; do
+    until [ -f "$EXISTING_LOCALDATABASESPATH" ]; do
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-What is the database username? (required): "
-      read DBUSERNAME
-      if [ "x$DBUSERNAME" = "x" ]; then
-          echo "Oh no! You need to provide the database username. Please go back and try again."
+  What is the absolute path to the local_databases.php file, including the filename?
+
+  Leave blank to use the default: '$EXISTING_LOCALDATABASESPATH_DEFAULT'
+  : "
+      read EXISTING_LOCALDATABASESPATH_ENTERED
+      if [ ! "x$EXISTING_LOCALDATABASESPATH_ENTERED" = "x" ]; then
+        EXISTING_LOCALDATABASESPATH=${EXISTING_LOCALDATABASESPATH_ENTERED}
+      else
+        EXISTING_LOCALDATABASESPATH=${EXISTING_LOCALDATABASESPATH_DEFAULT}
+      fi
+
+      if [ ! -f "$EXISTING_LOCALDATABASESPATH" ]; then
+        echo "Oops! '$EXISTING_LOCALDATABASESPATH' either doesn't exist or isn't accessible. Please try again..."
       fi
     done
-    echo "Using: $DBUSERNAME.
 
-    ---"
+    # Symlink local_settings and local_databases.
+    ln -s ${EXISTING_LOCALDATABASESPATH} "$BUILDPATH/drupal7_core/local_databases.php"
+    ln -s ${EXISTING_LOCALSETTINGSPATH} "$BUILDPATH/drupal7_core/local_settings.php"
 
-    until [ ! "x$DBPASSWORD" = "x" ]; do
-      echo -n "
-*************************************************************************
+    # Is there a Drush alias?
+    if [ -f "$DRUSHALIASPHYSICALLOCATION" ]; then
+      echo "
+  *************************************************************************
 
-What is the database password? (required): "
-      read DBPASSWORD
-      if [ "x$DBPASSWORD" = "x" ]; then
-          echo "Oh no! You need to provide the database password - blank passwords aren't allowed (sorry). Please go back and try again."
+  Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME: "
+
+      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
+        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
       fi
-    done
-    echo "Using: $DBPASSWORD.
 
-    ---"
-
-    echo -n "
-*************************************************************************
-
-What is the database host? Leave empty for the default: 127.0.0.1: "
-    read DBHOST
-    if [ "x$DBHOST" = "x" ]; then
-      DBPORT="127.0.0.1"
+      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
     fi
-    echo "Using: $DBHOST
 
-    ---"
-
-    echo -n "
-*************************************************************************
-
-What is the database port? Leave empty for the default: 3306: "
-    read DBPORT
-    if [ "x$DBPORT" = "x" ]; then
-      DBPORT=3306
-    fi
-    echo "Using: $DBPORT
-
-    ---"
-
-    # Create the DB connection string and inject into $LOCALDATABASESPATH before
-    # "  // {{BUILDSHINSERT}}".
-
-    # AROOGA ALERT! Finding a working search-replace command has been a f***ing
-    # nightmare! So please, if you're as synaptically challenged as I am, please
-    # please please don't mess with the code on the following lines unless,
-    # well, you wrote perl. Or something. I dunno. I've just spent three hours
-    # trying to fix this. Three hours! Why did I do that? I could have taken a
-    # plane to Spain in that time and now I could be sunning myself on a beach,
-    # drinking cheap, warm Sangria out of a carton smeared with sand from the
-    # "beach" I've rocked up to, which in reality is no more than a handful of
-    # builders' sand (you know, the stuff that turns your skin orange) tossed
-    # over the rubble and other apocryphal detritus that is left over when a
-    # fast, cheap, dodgy building project on the continent leaves town.
-
-    # So, er, yeah. Be careful with this code please...
-
-    CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
-
-    cd "$BUILDPATH/drupal7_core"
-    echo $CONNECTIONSTRING > local_databases.tmp
-
-    sed -e '/BUILDSHINSERT}}/r./local_databases.tmp' local_databases.php > local_databases_2.php
-    mv local_databases_2.php local_databases.php
-    rm local_databases.tmp
-
-    # Here ends todays whinge...
+  else
+    # No.
+    LOCALDATABASESPATH="$BUILDPATH/drupal7_core/local_databases.php"
 
     echo "
-*************************************************************************
+  *************************************************************************
 
-Done. Please check the output of local_databases.php to make sure it looks okay:
+  Copying local_databases.php and local_settings.php to $BUILDPATH/drupal7_core.
 
-****************************************************************************"
+  You will be asked for the database connection details shortly; if you don't
+  want to or can't set them up now, you will need to edit the file at
+  $LOCALDATABASESPATH to set them."
 
-    cat "$LOCALDATABASESPATH"
+    cp "$BUILDPATH/drupal7_multisite_template/local_databases.template.php" "$LOCALDATABASESPATH"
 
-    echo "
-****************************************************************************
-    "
+    LOCALSETTINGSFILEPATH="$BUILDPATH/drupal7_core/local_settings.php"
+    cp "$BUILDPATH/drupal7_multisite_template/local_settings.template.php" "$LOCALSETTINGSFILEPATH"
 
+  fi
+
+  # ---
+
+  if [ ! "x$MULTISITENAME" = "x" ]; then
     echo -n "
-*************************************************************************
+  *************************************************************************
 
-Is Drupal already installed? Y/n: "
+  Do you know the database connection details, and want to set them in $LOCALDATABASESPATH? Y/n: "
 
     old_stty_cfg=$(stty -g)
     stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
     if echo "$answer" | grep -iq "^y" ;then
-      echo "Testing database..."
+      # Get DB connection details: DB name, username, password, host, and port.
+      until [ ! "x$DBNAME" = "x" ]; do
+        echo -n "
+  *************************************************************************
 
-      cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
-      drush rr
-      drush cc all
-      drush status
-    else
-      # TODO: add step to import a MySQL DB if database details known
+  What is the database name? (required): "
+        read DBNAME
+        if [ "x$DBNAME" = "x" ]; then
+            echo "Oh no! You need to provide the database name. Please go back and try again."
+        fi
+      done
+      echo "Using: $DBNAME.
+
+      ---"
+
+      until [ ! "x$DBUSERNAME" = "x" ]; do
+        echo -n "
+  *************************************************************************
+
+  What is the database username? (required): "
+        read DBUSERNAME
+        if [ "x$DBUSERNAME" = "x" ]; then
+            echo "Oh no! You need to provide the database username. Please go back and try again."
+        fi
+      done
+      echo "Using: $DBUSERNAME.
+
+      ---"
+
+      until [ ! "x$DBPASSWORD" = "x" ]; do
+        echo -n "
+  *************************************************************************
+
+  What is the database password? (required): "
+        read DBPASSWORD
+        if [ "x$DBPASSWORD" = "x" ]; then
+            echo "Oh no! You need to provide the database password - blank passwords aren't allowed (sorry). Please go back and try again."
+        fi
+      done
+      echo "Using: $DBPASSWORD.
+
+      ---"
 
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-Do you have a database dump you want to import? Y/n: "
+  What is the database host? Leave empty for the default: 127.0.0.1: "
+      read DBHOST
+      if [ "x$DBHOST" = "x" ]; then
+        DBPORT="127.0.0.1"
+      fi
+      echo "Using: $DBHOST
+
+      ---"
+
+      echo -n "
+  *************************************************************************
+
+  What is the database port? Leave empty for the default: 3306: "
+      read DBPORT
+      if [ "x$DBPORT" = "x" ]; then
+        DBPORT=3306
+      fi
+      echo "Using: $DBPORT
+
+      ---"
+
+      # Create the DB connection string and inject into $LOCALDATABASESPATH before
+      # "  // {{BUILDSHINSERT}}".
+
+      # AROOGA ALERT! Finding a working search-replace command has been a f***ing
+      # nightmare :( So please, if you're as synaptically challenged as I am, please
+      # please please don't mess with the code on the following lines unless,
+      # well, you wrote perl. Or something. I dunno. I've just spent three hours
+      # trying to fix this. Three hours! Why did I do that? I could have taken a
+      # plane to Spain in that time and now I could be sunning myself on a beach,
+      # drinking cheap, warm Sangria out of a carton smeared with sand from the
+      # "beach" I've rocked up to, which in reality is no more than a handful of
+      # builders' sand (you know, the stuff that turns your skin orange) tossed
+      # over the rubble and other apocryphal detritus that is left over when a
+      # fast, cheap, dodgy building project on the continent leaves town.
+
+      # So, er, yeah. Be careful with this code please...
+
+      CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
+
+      cd "$BUILDPATH/drupal7_core"
+      echo ${CONNECTIONSTRING} > local_databases.tmp
+
+      sed -e '/BUILDSHINSERT}}/r./local_databases.tmp' local_databases.php > local_databases_2.php
+      mv local_databases_2.php local_databases.php
+      rm local_databases.tmp
+
+      # Here ends todays whinge...
+
+      echo "
+  *************************************************************************
+
+  Done. Please check the output of local_databases.php to make sure it looks okay:
+
+  ****************************************************************************"
+
+      cat "$LOCALDATABASESPATH"
+
+      echo "
+  ****************************************************************************
+      "
+
+      echo -n "
+  *************************************************************************
+
+  Is Drupal already installed? Y/n: "
 
       old_stty_cfg=$(stty -g)
       stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
       if echo "$answer" | grep -iq "^y" ;then
-        # Get the DB path.
-        DATABASEDUMPPATH=monkey
+        echo "Testing database..."
 
-        until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
-          echo -n "
-*************************************************************************
+        cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+        drush rr
+        drush cc all
+        drush status
+      else
+        # TODO: add step to import a MySQL DB if database details known
 
-What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
-: "
-          read DATABASEDUMPPATH
+        echo -n "
+  *************************************************************************
 
-          if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
-            if [ ! -e "$DATABASEDUMPPATH" ]; then
-              echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
-            else
-              COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
-              echo "Attempting import: $COMMAND...
-              "
-              eval $COMMAND
-              echo "All done."
+  Do you have a database dump you want to import? Y/n: "
+
+        old_stty_cfg=$(stty -g)
+        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+        if echo "$answer" | grep -iq "^y" ;then
+          # Get the DB path.
+          DATABASEDUMPPATH="monkey"
+
+          until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
+            echo -n "
+  *************************************************************************
+
+  What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
+  : "
+            read DATABASEDUMPPATH
+
+            if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
+              if [ ! -e "$DATABASEDUMPPATH" ]; then
+                echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
+              else
+                COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
+                echo "Attempting import: $COMMAND...
+                "
+                eval ${COMMAND}
+                echo "MySQL import done."
+              fi
             fi
-          fi
 
-        done
+          done
+        fi
       fi
-
     fi
 
-  fi
+    # Do they want us to install Drupal?
+    echo -n "
+*************************************************************************
 
-  # TODO: add step to download node_modules to $BUILDPATH/node_modules if not already downloaded
+Do you want to run the Drupal installer? This will set up a minimal
+Drupal install with a number of base modules and settings configured.
 
-  # TODO: add step to install Drupal?
+Y/n: "
 
-else
-  echo "
+    old_stty_cfg=$(stty -g)
+    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+    if echo "$answer" | grep -iq "^y" ;then
+      # Get the admin username and password.
+      echo -n "
+*************************************************************************
+
+Please choose an administrator username for the root Drupal user: "
+      read ADMINUSERNAME
+
+      echo -n "
+*************************************************************************
+
+Please choose a password for $ADMINUSERNAME: "
+      read ADMINPASS
+
+      FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
+
+      echo -n "
+*************************************************************************
+
+Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
+      read PROTOCOL
+
+      if [ "x$PROTOCOL" = "x" ]; then
+        PROTOCOL="https"
+      fi
+
+      FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
+
+      # Do they want to enable four_communications_base_modules?
+      if [ -d "$BUILDPATH/drupal7_four_features" ]; then
+        # Actually, just do it :)
+
+#        echo -n "
+#*************************************************************************
+#
+#Do you want to enable the suite of Four Features? (Recommended) Y/n: "
+#
+#        old_stty_cfg=$(stty -g)
+#        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#        if echo "$answer" | grep -iq "^y" ;then
+#          FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules"
+#        fi
+
+        FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules fourcomms_update_notifications four_communications_user_roles four_login_toboggan_settings"
+
+      # Otherwise, do they want to enable common_base_modules?
+      elif [ -d "$BUILDPATH/drupal7_common_features/common_base_modules" ]; then
+        # Just do it.
+
+#        echo -n "
+#*************************************************************************
+#
+#Do you want to enable the run the common_base_modules feature? Y/n: "
+#
+#        old_stty_cfg=$(stty -g)
+#        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#        if echo "$answer" | grep -iq "^y" ;then
+#          FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules"
+#        fi
+
+        FEATURESTOENABLE="$FEATURESTOENABLE common_base_modules update_notifications_redirect common_user_roles login_toboggan_settings"
+      fi
+    fi
+
+    echo "
+*************************************************************************
+
+Beginning install..."
+
+    drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
+
+    echo "
+*************************************************************************
+
+Drupal installed - enabling features..."
+
+    drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
+
+    echo "
+*************************************************************************
+
+Reverting features..."
+
+    drush --uri="$SITEURI" fra -y
+
+    echo "
+*************************************************************************
+
+Clearing caches..."
+
+    drush --uri="$SITEURI" cc all
+
+    # Open the site in a web browser.
+    ./script-components/open-url.sh "$PROTOCOL://$SITEURI"
+
+    echo "
+*************************************************************************
+
+You can now browse your site at $PROTOCOL://$SITEURI - yay!"
+
+  else
+    echo "
 *************************************************************************
 
 This script can't set up the database because no multisite directory name has been entered.
 
 Please manually edit $BUILDPATH/drupal7_core/local_databases.php to set
 the database details."
+  fi
 fi
 
 echo "
