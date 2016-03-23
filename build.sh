@@ -31,7 +31,7 @@ A choice of two Features repos - either greyhead_common_featues or (Four only)
 drupal7_four_features, which is symlinked into
 drupal7_core/www/sites/all/modules/features
 
-(Four only) drupal7_sites_projects: the Projects directory for Four
+drupal7_sites_projects: the Projects directory for Greyhead/Four
 Communications, where you can work on code which is specifically for a
 particular Four Drupal project. Individual projects will be symlinked into
 drupal7_core/www/sites/[project directory name]
@@ -403,7 +403,33 @@ fi
 # Download Drupal 7 core.
 "$STARTINGDIRECTORY/script-components/download-drupal7-core.sh" --buildpath="$BUILDPATH" --drupalversion=7
 
-# ---
+# Create symlinks.
+echo "
+*************************************************************************
+
+";
+
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]]; then
+  # Symlink common first.
+  COMMONSITESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites"
+  COMMONSITESPHYSICALPATH="$BUILDPATH/drupal7_sites_common"
+  if [ -e "$COMMONSITESSYMLINKPATH" ]; then
+    rm "$COMMONSITESSYMLINKPATH"
+  fi
+
+  echo "Linking $COMMONSITESSYMLINKPATH to $COMMONSITESPHYSICALPATH:"
+  ln -s "$COMMONSITESPHYSICALPATH" "$COMMONSITESSYMLINKPATH"
+
+  # Symlink drush aliases.
+  DRUSHALIASESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/all/drush"
+  DRUSHALIASESPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
+  if [ -e "$DRUSHALIASESSYMLINKPATH" ]; then
+    rm
+  fi
+
+  echo "Linking $DRUSHALIASESSYMLINKPATH to $DRUSHALIASESPHYSICALPATH:"
+  ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
+fi
 
 echo -n "
 *************************************************************************
@@ -480,28 +506,26 @@ Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
 fi
 
 if [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
+  # If Drupal core and drupal7_sites_common were checked out ok, and we have
+  # a multisite name, symlink the project dir and drush aliases in now.
   if [ ! "x$MULTISITENAME" = "x" ]; then
-    MULTISITELOCATION="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
+    # Symlink the multisite directory from sites/ to its physical location.
+    MULTISITEPHYSICALLOCATION="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
+    MULTISITESYMLINKLOCATION="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
 
-    if [ -d "$MULTISITELOCATION" ]; then
-      echo "
-
-      ---
-
-      Symlinking $BUILDPATH/drupal7_core/www/sites/$MULTISITENAME to $MULTISITELOCATION:"
-
-      ln -s "$MULTISITELOCATION" "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
-    elif [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
+    if [ ! -d "$MULTISITEPHYSICALLOCATION" ]; then
       echo -p "
 *************************************************************************
 
-Multisite directory $MULTISITELOCATION not found. Do you want to create it from the multisite template? Y/n: "
+Multisite directory $MULTISITEPHYSICALLOCATION not found. Do you want to create it from the multisite template? Y/n: "
 
       old_stty_cfg=$(stty -g)
       stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
       if echo "$answer" | grep -iq "^y" ;then
-        # Copy the sites template
+        # Copy the sites template and comment out the URL template in
+        # settings.site_urls.info.
         cp -R "$BUILDPATH/drupal7_multisite_template/sites-template" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS"
+        perl -pi -e "s/SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/; SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/g" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/settings.site_urls.info"
 
         echo -n "
 *************************************************************************
@@ -540,12 +564,18 @@ Y/n: "
       fi
     fi
 
+    if [ -e "$MULTISITESYMLINKLOCATION" ]; then
+      rm "$MULTISITESYMLINKLOCATION"
+    fi
+
+    ln -s "$MULTISITEPHYSICALLOCATION" "$MULTISITESYMLINKLOCATION"
+
     DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
     DRUSHALIASLOCATION="$BUILDPATH/drupal7_sites_projects/_drush_aliases/$DRUSHALIASNAME"
 
     # If the alias doesn't exist but the drupal7_sites_projects repo does,
     # we can attempt to create it.
-    if [ ! -f "$DRUSHALIASLOCATION"] && [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
+    if [[ ! -f "$DRUSHALIASLOCATION" && -d "$BUILDPATH/drupal7_sites_projects" ]]; then
       echo -n "
 *************************************************************************
 
@@ -820,12 +850,12 @@ What is the database port? Leave empty for the default: 3306: "
     ---"
 
     # Create the DB connection string and inject into $LOCALDATABASESPATH before
-    # "  // {{build-local-dev.sh insert above}}"
+    # "  // {{BUILDSHINSERT}}"
 
     CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),
-  // {{build-local-dev.sh insert above}}"
+  // {{BUILDSHINSERT}}"
 
-  perl -pe 's/\/\/ {{build-local-dev.sh insert above}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH"
+  perl -pe 's/\/\/ {{BUILDSHINSERT}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH"
 
 #    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" "$LOCALDATABASESPATH"
 #    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" "$LOCALDATABASESPATH"
