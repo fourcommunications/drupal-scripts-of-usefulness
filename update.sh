@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+#set -e
 clear
 echo -n "
 *************************************************************************
@@ -119,7 +119,8 @@ echo "Using: $DEPLOYDIRECTORY.
 UPDATECORE=0
 UPDATECONTRIB=0
 if [ ! "x$MULTISITENAME" = "x" ]; then
-  echo -n "Update Drupal core? Y/n: "
+  echo -n "
+Update Drupal core? Y/n: "
 
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -127,7 +128,8 @@ if [ ! "x$MULTISITENAME" = "x" ]; then
     UPDATECORE=1
   fi
 
-  echo -n "Update contrib modules? Y/n: "
+  echo -n "
+Update contrib modules? Y/n: "
 
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -138,7 +140,8 @@ fi
 
 # Find out if we're pulling from origin.
 PULLORIGIN=0
-echo -n "'git pull' changes from origin? Y/n: "
+echo -n "
+'git pull' changes from origin? Y/n: "
 
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -148,7 +151,8 @@ fi
 
 # Find out if we're pulling from upstream.
 PULLUPSTREAM=0
-echo -n "Merge changes from upstream repos, where configured? Y/n: "
+echo -n "
+Merge changes from upstream repos, where configured? Y/n: "
 
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -158,7 +162,8 @@ fi
 
 # Find out if we're pushing back to origin.
 PUSHORIGIN=0
-echo -n "'git push' changes to origin? Y/n: "
+echo -n "
+'git push' changes to origin? Y/n: "
 
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -166,50 +171,77 @@ if echo "$answer" | grep -iq "^y" ;then
   PUSHORIGIN=1
 fi
 
+cd "$DEPLOYDIRECTORY"
+echo "cd-ing to deploy directory $DEPLOYDIRECTORY."
+
 # Create a list of the directories we want to test for and update, if they're
 # present.
-declare -a DIRECTORYNAMES=("drupal7_core" "drupal7_multisite_template" "drupal7_sites_common" "scripts-of-usefulness" "drupal7_four_features" "drupal7_sites_projects")
+declare -a DIRECTORYNAMES=("drupal7_core" "drupal7_multisite_template" "drupal7_sites_common" "drupal7_common_features" "scripts-of-usefulness" "drupal7_four_features" "drupal7_sites_projects")
 
 for DIRECTORYNAME in "${DIRECTORYNAMES[@]}"
 do
-  if [ -d "$DEPLOYDIRECTORY/$DIRECTORYNAME" ]; then
-    echo "Updating $DIRECTORYNAME..."
+  echo "
+Trying $DIRECTORYNAME..."
 
-    cd "$DEPLOYDIRECTORY/$DIRECTORYNAME"
+  if [ -d "$DIRECTORYNAME" ]; then
+    echo "
+Updating $DIRECTORYNAME..."
+
+    cd "$DIRECTORYNAME"
 
     # Get branch name
     BRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 
     echo "Branch is: $BRANCH"
 
-    echo "Updating remotes..."
-    git remote update
+    # Get status of current working directory.
+    GITSTATUS="$(git status)"
+    if [[ "$GITSTATUS" == *"working directory clean"* ]]; then
+      echo "Working directory appears clean - nothing to commit - so we'll try updates..."
 
-    echo "Running git fetch..."
-    git fetch
+      echo "Updating remotes..."
+      git remote update
 
-    if [ $PULLORIGIN = 1 ]; then
-      echo "Pulling from origin..."
-      git pull
+      echo "Running git fetch..."
+      git fetch
+
+      if [ "$PULLORIGIN" = 1 ]; then
+        echo "Pulling from origin..."
+        git pull
+      fi
+
+      # Merge upstream
+      GITREMOTES="$(git remote show)"
+      if [[ "$PULLUPSTREAM" = 1 && "$GITREMOTES" == *"upstream"* ]]; then
+        echo "Pulling from upstream..."
+        git fetch upstream; git merge upstream/$BRANCH
+      else
+        echo "No upstream remote found."
+      fi
+
+      echo "Updating submodules..."
+      git submodule update --init --recursive
+      git submodule update --recursive
+
+      if [ "$PUSHORIGIN" = 1 ]; then
+        echo "Pushing all to origin..."
+        git push --all
+      fi
+    else
+      echo "
+      ---
+      ERROR: couldn't verify that the current checkout is clean - the text 'working directory clean' wasn't found in the output of a git status:
+      "
+
+      git status
+
+      echo "
+      ---
+      Please clean up the directory (or fix this script :)."
     fi
 
-    # Merge upstream
-    HASUPSTREAMREMOTE=$(git remote show | grep "upstream")
-    if [ $PULLUPSTREAM = 1 -a $HASUPSTREAMREMOTE = "upstream" ]; then
-      echo "Pulling from upstream..."
-      git fetch upstream; git merge upstream/$BRANCH
-    fi
+    cd ..
 
-    echo "Updating submodules..."
-    git submodule update --init --recursive
-    git submodule update --recursive
-
-    if [ $PUSHORIGIN = 1 ]; then
-      echo "Pushing all to origin..."
-      git push --all
-    fi
-
-    cd "$DEPLOYDIRECTORY"
     echo "Done. Next!
 
     ---
