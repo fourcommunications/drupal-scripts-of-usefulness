@@ -632,7 +632,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/scripts-of-usefulness.git"
+  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
