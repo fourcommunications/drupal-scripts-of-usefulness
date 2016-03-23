@@ -819,7 +819,7 @@ Y/n: "
 
           perl -pi -e "s/{{BUILDPATH-$BUILDTYPE}}/$BUILDPATH/g" "$DRUSHALIASPHYSICALLOCATION"
 
-          if [ ! "x$SITEURI" = "x" ]; then
+          if [ "x$SITEURI" = "x" ]; then
             echo -n "What is the site URL, without http:// or any trailing slash?: "
             read SITEURI
           fi
