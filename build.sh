@@ -758,6 +758,8 @@ Symlinking $DRUSHALIASLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$D
 
 else
   # No.
+  LOCALDATABASESPATH="$BUILDPATH/drupal7_core/local_databases.php"
+
   echo "
 *************************************************************************
 
@@ -767,7 +769,6 @@ You will be asked for the database connection details shortly; if you don't
 want to or can't set them up now, you will need to edit the file at
 $LOCALDATABASESPATH to set them."
 
-  LOCALDATABASESPATH="$BUILDPATH/drupal7_core/local_databases.php"
   cp "$BUILDPATH/drupal7_multisite_template/local_databases.template.php" "$LOCALDATABASESPATH"
 
   LOCALSETTINGSFILEPATH="$BUILDPATH/drupal7_core/local_settings.php"
@@ -854,19 +855,32 @@ What is the database port? Leave empty for the default: 3306: "
     ---"
 
     # Create the DB connection string and inject into $LOCALDATABASESPATH before
-    # "  // {{BUILDSHINSERT}}"
+    # "  // {{BUILDSHINSERT}}".
 
-    CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),
-  // {{BUILDSHINSERT}}"
+    # AROOGA ALERT! Finding a working search-replace command has been a f***ing
+    # nightmare! So please, if you're as synaptically challenged as I am, please
+    # please please don't mess with the code on the following lines unless,
+    # well, you wrote perl. Or something. I dunno. I've just spent three hours
+    # trying to fix this. Three hours! Why did I do that? I could have taken a
+    # plane to Spain in that time and now I could be sunning myself on a beach,
+    # drinking cheap, warm Sangria out of a carton smeared with sand from the
+    # "beach" I've rocked up to, which in reality is no more than a handful of
+    # builders' sand (you know, the stuff that turns your skin orange) tossed
+    # over the rubble and other apocryphal detritus that is left over when a
+    # fast, cheap, dodgy building project on the continent leaves town.
 
-  perl -pe 's/\/\/ {{BUILDSHINSERT}}/"$CONNECTIONSTRING"/e' "$LOCALDATABASESPATH" > "$LOCALDATABASESPATH"
+    # So, er, yeah. Be careful with this code please...
 
-#    perl -pi -e "s/{{MULTISITE_IDENTIFIER}}/$MULTISITENAME/g" "$LOCALDATABASESPATH"
-#    perl -pi -e "s/{{DOMAIN}}/$SITEURI/g" "$LOCALDATABASESPATH"
-#    perl -pi -e "s/{{DATABASENAME}}/$DBNAME/g" "$LOCALDATABASESPATH"
-#    perl -pi -e "s/{{DATABASEUSERNAME}}/$DBUSERNAME/g" "$LOCALDATABASESPATH"
-#    perl -pi -e "s/{{DATABASEPASSWORD}}/$DBPASSWORD/g" "$LOCALDATABASESPATH"
-#    perl -pi -e "s/3306/$DBPORT/g" "$LOCALDATABASESPATH"
+    CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
+
+    cd "$BUILDPATH/drupal7_core"
+    echo $CONNECTIONSTRING > local_databases.tmp
+
+    sed -e '/BUILDSHINSERT}}/r./local_databases.tmp' local_databases.php > local_databases_2.php
+    mv local_databases_2.php local_databases.php
+    rm local_databases.tmp
+
+    # Here ends todays whinge...
 
     echo "
 *************************************************************************
@@ -948,8 +962,6 @@ This script can't set up the database because no multisite directory name has be
 
 Please manually edit $BUILDPATH/drupal7_core/local_databases.php to set
 the database details."
-
-  cd "$BUILDPATH"
 fi
 
 echo "
@@ -960,4 +972,4 @@ All finished. Enjoy! :)
 *************************************************************************
 "
 
-cd "$STARTINGDIRECTORY"
+cd "$BUILDPATH"
