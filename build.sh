@@ -220,13 +220,15 @@ fi
 PWD=$(pwd)
 BUILDPATH_DEFAULT="$PWD/../builds/$BUILDPATH_SUBDIR"
 
-until [ -d "$BUILDPATH" ]; do
+BUILDPATH="$PWD"
+until [ ! -d "$BUILDPATH" ]; do
   echo -n "
 *************************************************************************
 
 What directory should we build Drupal in, without a trailing slash?
 
-This directory should not already exist.
+This directory MUST NOT already exist (since you could accidentally
+overwrite another project build).
 
 Leave blank to use the default: '$BUILDPATH_DEFAULT'
 :"
@@ -240,14 +242,20 @@ Leave blank to use the default: '$BUILDPATH_DEFAULT'
   if [ -d "$BUILDPATH" ]; then
     echo "
   ***************************************************************
-  WARNING: Directory already exists; please make sure it's empty.
+  WARNING:
+  Directory '$BUILDPATH' already exists; please remove it and try again.
   ***************************************************************
   "
-  else
-    echo "Making directory $BUILDPATH..."
-    mkdir -p "$BUILDPATH"
   fi
 done
+
+echo "Making directory $BUILDPATH..."
+mkdir -p "$BUILDPATH"
+
+if [ ! -d "$BUILDPATH" ]; then
+  echo "Couldn't create $BUILDPATH. Please fix this and re-run. Thanks!"
+  exit
+fi
 
 echo "
 Using: $BUILDPATH.
@@ -1055,14 +1063,10 @@ if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]
   ln -s "$DRUSHALIASESPHYSICALPATH" "$DRUSHALIASESSYMLINKPATH"
 fi
 
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" ]]; then
-  # Symlink the multisite itself.
-  MULTISITESYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
-  MULTISITEPHYSICALPATH="$BUILDPATH/drupal7_sites_common/$MULTISITENAME"
-  if [ -e "$MULTISITESYMLINKPATH" ]; then
-    rm "$MULTISITESYMLINKPATH"
-  fi
-
+# Symlink the multisite itself.
+MULTISITESYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+MULTISITEPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
+if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$MULTISITEPHYSICALPATH" && ! -e "$MULTISITESYMLINKPATH" ]]; then
   echo "Linking $MULTISITESYMLINKPATH to $MULTISITEPHYSICALPATH:"
   ln -s "$MULTISITEPHYSICALPATH" "$MULTISITESYMLINKPATH"
 fi
@@ -1309,6 +1313,40 @@ if [ ! ${BUILDTYPE} = "LIVE" ]; then
       "
 
       echo -n "
+*************************************************************************
+
+Do you have a database dump you want to import? Y/n: "
+
+      old_stty_cfg=$(stty -g)
+      stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+      if echo "$answer" | grep -iq "^y" ;then
+        # Get the DB path.
+        DATABASEDUMPPATH="monkey"
+
+        until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
+          echo -n "
+*************************************************************************
+
+What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
+: "
+          read DATABASEDUMPPATH
+
+          if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
+            if [ ! -e "$DATABASEDUMPPATH" ]; then
+              echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
+            else
+              COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
+              echo "Attempting import: $COMMAND...
+              "
+              eval ${COMMAND}
+              echo "MySQL import done."
+            fi
+          fi
+
+        done
+      fi
+
+      echo -n "
   *************************************************************************
 
   Is Drupal already installed? Y/n: "
@@ -1319,45 +1357,9 @@ if [ ! ${BUILDTYPE} = "LIVE" ]; then
         echo "Testing database..."
 
         cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
-        drush rr
+        drush rr --fire-bazooka
         drush cc all
         drush status
-      else
-        # TODO: add step to import a MySQL DB if database details known
-
-        echo -n "
-  *************************************************************************
-
-  Do you have a database dump you want to import? Y/n: "
-
-        old_stty_cfg=$(stty -g)
-        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-        if echo "$answer" | grep -iq "^y" ;then
-          # Get the DB path.
-          DATABASEDUMPPATH="monkey"
-
-          until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
-            echo -n "
-  *************************************************************************
-
-  What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
-  : "
-            read DATABASEDUMPPATH
-
-            if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
-              if [ ! -e "$DATABASEDUMPPATH" ]; then
-                echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
-              else
-                COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
-                echo "Attempting import: $COMMAND...
-                "
-                eval ${COMMAND}
-                echo "MySQL import done."
-              fi
-            fi
-
-          done
-        fi
       fi
     fi
 
