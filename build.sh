@@ -59,6 +59,10 @@ function removegit {
   find . | grep .git | xargs rm -rf
 }
 
+function createtag {
+  git tag "$1-v$2" -s -a -m "Tagging '$1-v$2' for $1." && git push origin "$1-v$2"
+}
+
 echo "
 *************************************************************************
 
@@ -205,6 +209,36 @@ fi
 
 echo "Build type: $BUILDTYPE"
 
+# Have we been asked to build a live deployment? Find out if we are to build
+# from a pre-existing tag, or create a new one (or both, conceivably...).
+if [ "$BUILDTYPE" = "LIVE" ]; then
+  if [ "x$BUILDFROMTAG" = "x" ]; then
+    echo -n "
+*************************************************************************
+
+Do you want to build from a pre-existing tag? If so, enter the tag version.
+
+Example: '1.2.2' (no quotes or 'v').
+
+: "
+
+    read BUILDFROMTAG
+  fi
+
+  if [ "x$CREATETAG" = "x" ]; then
+    echo -n "
+*************************************************************************
+
+Do you want to create a new tag? If so, enter the tag version.
+
+Example: '1.2.3' (no quotes or 'v').
+
+: "
+
+    read CREATETAG
+  fi
+fi
+
 # Set a depth modifier. We also use this to recursively remove the git
 # directories.
 GITDEPTH=""
@@ -225,7 +259,7 @@ elif [[ "$BUILDTYPE" = "LIVE" ]]; then
   PROJECTSBRANCH="master"
 
   if [ ! "x$CREATETAG" = "x" ]; then
-    BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
+    BUILDPATH_BUILDTYPE="live-tag-v$BUILDFROMTAG"
   else
     BUILDPATH_BUILDTYPE="live"
   fi
@@ -421,7 +455,7 @@ else
 fi
 
 if [ ! "x$CREATETAG" = "x" ]; then
-  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  createtag "$MULTISITENAME" "$CREATETAG"
 fi
 
 # ---
@@ -504,7 +538,7 @@ else
 fi
 
 if [ ! "x$CREATETAG" = "x" ]; then
-  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  createtag "$MULTISITENAME" "$CREATETAG"
 fi
 
 # ---
@@ -585,7 +619,7 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
   fi
 
   if [ ! "x$CREATETAG" = "x" ]; then
-    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+    createtag "$MULTISITENAME" "$CREATETAG"
   fi
 
   # ---
@@ -662,7 +696,7 @@ else
 fi
 
 if [ ! "x$CREATETAG" = "x" ]; then
-  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  createtag "$MULTISITENAME" "$CREATETAG"
 fi
 
 # ---
@@ -737,7 +771,7 @@ else
 fi
 
 if [ ! "x$CREATETAG" = "x" ]; then
-  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  createtag "$MULTISITENAME" "$CREATETAG"
 fi
 
 # ---
@@ -867,7 +901,7 @@ if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] |
   fi
 
   if [ ! "x$CREATETAG" = "x" ]; then
-    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+    createtag "$MULTISITENAME" "$CREATETAG"
   fi
 fi
 
@@ -995,7 +1029,7 @@ if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] |
   fi
 
   if [ ! "x$CREATETAG" = "x" ]; then
-    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+    createtag "$MULTISITENAME" "$CREATETAG"
   fi
 fi
 
