@@ -173,14 +173,17 @@ else
   exit
 fi
 echo ---
-cd $PATHTOWEBROOT && mv $ARCHIVELOCATION/$ARCHIVENAME.$ARCHIVEEXTENSION . && tar -xvf $ARCHIVENAME.$ARCHIVEEXTENSION && rm *.tar.gz && cd $ARCHIVENAME/sites && mkdir ../tmp && mv all ../tmp/ && mv sites.php ../tmp/ && mv $MULTISITENAME ../tmp/ && rm -rf * && mv ../tmp/* . && rmdir ../tmp/ && cd .. && touch sites/$MULTISITENAME/ENVIRONMENT_TYPE_LIVE.txt && if ! test -d "$PATHTOSETTINGS/privatefiles"; then mv privatefiles $PATHTOSETTINGS/;fi && if test -d "$PATHTOSETTINGS/privatefiles"; then rm -rf privatefiles && ln -s $PATHTOSETTINGS/privatefiles && chown -h $USERNAME:www-data privatefiles;fi && mkdir -p $PATHTOSETTINGS/privatefiles/$MULTISITENAME/tmp && chown -R www-data:$USERNAME $PATHTOSETTINGS/privatefiles/$MULTISITENAME && chmod -R 0770 $PATHTOSETTINGS/privatefiles/$MULTISITENAME && ln -s $PATHTOSETTINGS/local_databases.php && chown -h $USERNAME:www-data local_databases.php && cd www/sites/$MULTISITENAME && ln -s $FILESPATH files && cd ../../../deployment-scripts && ./fix-permissions.sh --drupal_user=$USERNAME
+cd "$PATHTOWEBROOT" && mv "$ARCHIVELOCATION/$ARCHIVENAME.$ARCHIVEEXTENSION" . && tar -xvf "$ARCHIVENAME.$ARCHIVEEXTENSION" && rm *.tar.gz && cd "$ARCHIVENAME/sites" && mkdir ../tmp && mv all ../tmp/ && mv sites.php ../tmp/ && mv "$MULTISITENAME" ../tmp/ && rm -rf * && mv ../tmp/* . && rmdir ../tmp/ && cd .. && touch "sites/$MULTISITENAME/ENVIRONMENT_TYPE_LIVE.txt" && if ! test -d "$PATHTOSETTINGS/privatefiles"; then mv privatefiles "$PATHTOSETTINGS/"; fi && if test -d "$PATHTOSETTINGS/privatefiles"; then rm -rf privatefiles && ln -s "$PATHTOSETTINGS/privatefiles" && chown -h "$USERNAME:www-data" privatefiles;fi && mkdir -p "$PATHTOSETTINGS/privatefiles/$MULTISITENAME/tmp" && chown -R "www-data:$USERNAME" "$PATHTOSETTINGS/privatefiles/$MULTISITENAME" && chmod -R 0770 "$PATHTOSETTINGS/privatefiles/$MULTISITENAME" && ln -s "$PATHTOSETTINGS/local_databases.php" && chown -h "$USERNAME:www-data" local_databases.php && cd "www/sites/$MULTISITENAME" && ln -s "$FILESPATH" files && cd ../../../deployment-scripts && ./fix-permissions.sh --drupal_user="$USERNAME"
 echo ---
-cd $PATHTOWEBROOT/current/www/sites/$MULTISITENAME/
-PWD=$(pwd)
-echo "Current directory: $PWD"
+MULTISITEPATH="$PATHTOWEBROOT/current/www/sites/$MULTISITENAME/"
+cd "$MULTISITEPATH"
+
+CURRENTDIRECTORY=$(pwd)
+
+echo "Current directory: $CURRENTDIRECTORY"
 echo ""
 echo "Files deployed alongside the live site. Taking a database dump..."
-drush --uri=$SITEURI --root="$PATHTOWEBROOT/current/www" sql-dump --result-file=$PATHTOSETTINGS/$MULTISITENAME-db-$DATETIMENOW.sql
+drush --uri="$SITEURI" --root="$PATHTOWEBROOT/current/www" sql-dump --result-file="$PATHTOSETTINGS/$MULTISITENAME-db-$DATETIMENOW.sql"
 echo ---
 echo "*************************************************************************"
 echo "*************************************************************************"
@@ -267,7 +270,7 @@ fi
 echo ---
 echo "*************************************************************************"
 echo -n "Step 1 of 6: put site into maintenance mode and re-point symlink... "
-drush --uri=$SITEURI vset maintenance_mode 1 && cd ../../../..; mv current current-old; ln -s $ARCHIVENAME current; chown -h $USERNAME:www-data current && cd current/www/sites/$MULTISITENAME
+drush --uri="$SITEURI" vset maintenance_mode 1 && cd ../../../..; mv current current-old; ln -s "$ARCHIVENAME" current; chown -h "$USERNAME:www-data" current && cd "current/www/sites/$MULTISITENAME"
 echo "- done: 'current' symlink re-pointed to '$ARCHIVENAME'."
 echo ---
 echo "*************************************************************************"
@@ -339,8 +342,8 @@ echo -n "Rebuild Drupal's registry? You may need to do this if files have been m
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
-  drush --uri=$SITEURI cc all
-  drush --uri=$SITEURI rr --fire-bazooka
+  drush --uri="$SITEURI" cc all
+  drush --uri="$SITEURI" rr --fire-bazooka
 fi
 echo ---
 echo "*************************************************************************"
@@ -350,15 +353,21 @@ echo "drush --uri=$SITEURI updb -y; drush --uri=$SITEURI fra -y; drush --uri=$SI
 echo ""
 UPDBTIMENOW=`date +%H:%M:%S`
 echo "Starting database updates at $UPDBTIMENOW..."
-drush --uri=$SITEURI updb -y
+drush --uri="$SITEURI" updb -y
 echo ---
 echo "*************************************************************************"
 echo "Step 6 of 7: Reverting Features..."
-drush --uri=$SITEURI fra -y
+echo ""
+echo -n "Revert Features? You shouldn't do this if there are Features which have been overridden (i.e. 'improved') in the database. Y/n"
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  drush --uri="$SITEURI" fra -y
+fi
 echo ---
 echo "*************************************************************************"
 echo "Step 7 of 7: Flushing caches..."
-drush --uri=$SITEURI cc all
+drush --uri="$SITEURI" cc all
 echo ---
 echo "*************************************************************************"
 echo "*************************************************************************"
@@ -382,7 +391,7 @@ stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with st
 if echo "$answer" | grep -iq "^y" ;then
   echo ""
   echo "Putting site back online..."
-  drush --uri=$SITEURI vset maintenance_mode 0
+  drush --uri="$SITEURI" vset maintenance_mode 0
   echo ""
   echo -n "Do you want to restart Varnish? Y/n"
   old_stty_cfg=$(stty -g)
@@ -406,15 +415,15 @@ else
     echo ""
     echo "Ok, switching back to the previous tag now..."
     echo ""
-    cd ../../../.. && mv current current-failed && mv current-old current && cd current/www/sites/$MULTISITENAME
+    cd ../../../.. && mv current current-failed && mv current-old current && cd "current/www/sites/$MULTISITENAME"
     echo "Previous code restored. Re-importing database dump. Note that Drush will report extra debugging information which may be useful in case of further problems..."
     echo ""
-    drush -d --uri=$SITEURI sql-drop && drush -d --uri=$SITEURI --root="$PATHTOWEBROOT/current/www" sql-cli < $PATHTOSETTINGS/$MULTISITENAME-db-$DATETIMENOW.sql
+    drush -d --uri="$SITEURI" sql-drop && drush -d --uri="$SITEURI" --root="$PATHTOWEBROOT/current/www" sql-cli < "$PATHTOSETTINGS/$MULTISITENAME-db-$DATETIMENOW.sql"
     echo ""
     echo "Roll-back complete. Please review the output above for any errors."
     echo ""
     echo "Putting site back online..."
-    drush --uri=$SITEURI vset maintenance_mode 0
+    drush --uri="$SITEURI" vset maintenance_mode 0
     echo ""
     echo -n "Do you want to restart Varnish? Y/n"
     old_stty_cfg=$(stty -g)
