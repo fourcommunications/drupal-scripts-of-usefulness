@@ -315,18 +315,36 @@ if echo "$answer" | grep -iq "^y" ;then
   service redis-server restart
 fi
 echo ---
+
+# If there is a deploymentscripts directory in the multisite dir, and it
+# contains a file called "v$TAGVERSION.sh", make it executable and run it.
+DEPLOYMENTSCRIPTPATH="$MULTISITEPATH/deploymentscripts/v$TAGVERSION.sh"
+if [ -e "$DEPLOYMENTSCRIPTPATH" ]; then
+  echo "*************************************************************************"
+  echo "Step 3 of 7: Found a deployment script at $DEPLOYMENTSCRIPTPATH - running...
+  "
+
+  cd "$MULTISITEPATH/deploymentscripts"
+  chmod +x "v$TAGVERSION.sh"
+  COMMAND="./v$TAGVERSION.sh  --uri=$SITEURI"
+  eval ${COMMAND}
+
+  echo "Deployment script finished."
+fi
+
 echo "*************************************************************************"
-echo "Step 3 of 6: rebuilding Drupal's caches..."
+echo "Step 4 of 7: rebuilding Drupal's caches..."
 echo ""
 echo -n "Rebuild Drupal's registry? You may need to do this if files have been moved, or the {system} table is significantly out of sync with the file structure. Y/n"
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
-  drush --uri=$SITEURI rr
+  drush --uri=$SITEURI cc all
+  drush --uri=$SITEURI rr --fire-bazooka
 fi
 echo ---
 echo "*************************************************************************"
-echo "Step 4 of 6: database updates - if this step freezes for more than ten minutes, you may need to CTRL+C this script and run the remaining commands manually, which are:"
+echo "Step 5 of 7: database updates - if this step freezes for more than ten minutes, you may need to CTRL+C this script and run the remaining commands manually, which are:"
 echo ""
 echo "drush --uri=$SITEURI updb -y; drush --uri=$SITEURI fra -y; drush --uri=$SITEURI cc all"
 echo ""
@@ -335,11 +353,11 @@ echo "Starting database updates at $UPDBTIMENOW..."
 drush --uri=$SITEURI updb -y
 echo ---
 echo "*************************************************************************"
-echo "Step 5 of 6: Reverting Features..."
+echo "Step 6 of 7: Reverting Features..."
 drush --uri=$SITEURI fra -y
 echo ---
 echo "*************************************************************************"
-echo "Step 6 of 6: Flushing caches..."
+echo "Step 7 of 7: Flushing caches..."
 drush --uri=$SITEURI cc all
 echo ---
 echo "*************************************************************************"
