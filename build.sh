@@ -5,6 +5,60 @@ clear
 # Note the starting directory.
 STARTINGDIRECTORY=$(pwd)
 
+# Check for command line options, e.g.:
+#
+# --buildtype="LIVE"
+# --buildfromtag="1.0.0"
+# --createtag="1.0.1"
+# --buildpath="[current build directory/../live-deployment-$TAGNAME]"
+
+# Parse Command Line Arguments
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --buildtype=*)
+        BUILDTYPE="${1#*=}"
+        echo "Build type: $BUILDTYPE"
+        ;;
+    --buildfromtag=*)
+        BUILDFROMTAG="${1#*=}"
+        echo "Building from tag: $BUILDFROMTAG"
+        ;;
+    --createtag=*)
+        CREATETAG="${1#*=}"
+        echo "Creating tag : $CREATETAG"
+        ;;
+    --buildpath=*)
+        BUILDPATH="${1#*=}"
+        echo "Build path: $BUILDPATH"
+        ;;
+    --help) print_help;;
+    *)
+      printf "***********************************************************\n"
+      printf "* Error: Invalid argument '${1#*=}', run --help for valid arguments. *\n"
+      printf "***********************************************************\n"
+      exit 1
+  esac
+  shift
+done
+
+# done -- TODO: default to checking out develop branch for local/develop builds, and rc branch for staging
+# TODO: implement choice to checkout different branches for each repo
+# TODO: implement confirmation questions when buildtype is STAGING as follows:
+# 1. Have you merged the work which you want to test from the develop branch onto rc?
+# 2. Have you pulled any remote changes using the update.sh script?
+# 3. Are your working directories clean?
+# TODO: implement confirmation questions when buildtype is LIVE - "have you merged "
+# 1. Have you merged the TESTED work which you want to deploy from the rc branch onto master?
+# 2. Have you pulled any remote changes using the update.sh script?
+# 3. Are your working directories clean?
+# TODO: implement build from tag step when buildtype is LIVE
+# TODO: implement create tag step when buildtype is LIVE
+
+function removegit {
+  # Recursively remove .git and .gitignore files.
+  find . | grep .git | xargs rm -rf
+}
+
 echo "
 *************************************************************************
 
@@ -113,14 +167,16 @@ destructions.
 
 "
 
-until [ ! "x$BUILDTYPE" = "x" ]; do
-  echo -n "What type of build is this?
+if [ ! "x$BUILDTYPE" = "x" ]; then
+  until [ ! "x$BUILDTYPE" = "x" ]; do
+    echo -n "What type of build is this?
 
 1: LOCAL
 2: DEV
 3: STAGING
 
-(Live builds will be coming shortly. To deploy a live build, see live-deploy.sh)
+(Live builds will be coming shortly. To deploy a live build created with
+this script, see live-deploy.sh.)
 
 
 Important information about branches
@@ -134,27 +190,36 @@ testing.
 
 : "
 
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^1" ;then
-    BUILDTYPE="LOCAL"
-  elif echo "$answer" | grep -iq "^2" ;then
-    BUILDTYPE="DEV"
-  elif echo "$answer" | grep -iq "^3" ;then
-    BUILDTYPE="STAGING"
-  elif echo "$answer" | grep -iq "^4" ;then
-    BUILDTYPE="LIVE"
-  fi
-done
+    old_stty_cfg=$(stty -g)
+    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+    if echo "$answer" | grep -iq "^1" ;then
+      BUILDTYPE="LOCAL"
+    elif echo "$answer" | grep -iq "^2" ;then
+      BUILDTYPE="DEV"
+    elif echo "$answer" | grep -iq "^3" ;then
+      BUILDTYPE="STAGING"
+    elif echo "$answer" | grep -iq "^4" ;then
+      BUILDTYPE="LIVE"
+    fi
+  done
+fi
 
 echo "Build type: $BUILDTYPE"
 
-# Determine the branches to use for projects.
-if [[ ${BUILDTYPE} = "LOCAL" || $BUILDTYPE = "DEV" ]]; then
+# Set a depth modifier. We also use this to recursively remove the git
+# directories.
+GITDEPTH=""
+
+# Determine the branches to use for projects. If we've been asked to build from
+# a particular tag, then we will attempt to check each project out at that tag.
+if [ ! "x$BUILDFROMTAG" = "x" ]; then
+  PROJECTSBRANCH="$BUILDFROMTAG"
+  GITDEPTH="--depth 1"
+elif [[ "$BUILDTYPE" = "LOCAL" || "$BUILDTYPE" = "DEV" ]]; then
   PROJECTSBRANCH="develop"
-elif [[ ${BUILDTYPE} = "STAGING" ]]; then
+elif [[ "$BUILDTYPE" = "STAGING" ]]; then
   PROJECTSBRANCH="rc"
-elif [[ ${BUILDTYPE} = "LIVE" ]]; then
+elif [[ "$BUILDTYPE" = "LIVE" ]]; then
   PROJECTSBRANCH="master"
 fi
 
@@ -183,7 +248,7 @@ Using: $MULTISITENAME.
 "
 
 # Remove hyphens from $MULTISITENAME, if any exist.
-MULTISITENAMENOHYPHENS=$(echo $MULTISITENAME | sed 's/[\._-]//g')
+MULTISITENAMENOHYPHENS=$(echo "$MULTISITENAME" | sed 's/[\._-]//g')
 
 # ---
 
@@ -212,7 +277,7 @@ Using: $SITEURI
 
 # ---
 
-BUILDPATH_SUBDIR=$MULTISITENAME
+BUILDPATH_SUBDIR="$MULTISITENAME"
 if [ "x$BUILDPATH_SUBDIR" = "x" ]; then
   BUILDPATH_SUBDIR="default"
 fi
@@ -234,9 +299,9 @@ Leave blank to use the default: '$BUILDPATH_DEFAULT'
 :"
   read BUILDPATH_ENTERED
   if [ ! "x$BUILDPATH_ENTERED" = "x" ]; then
-    BUILDPATH=$BUILDPATH_ENTERED
+    BUILDPATH="$BUILDPATH_ENTERED"
   else
-    BUILDPATH=$BUILDPATH_DEFAULT
+    BUILDPATH="$BUILDPATH_DEFAULT"
   fi
 
   if [ -d "$BUILDPATH" ]; then
@@ -276,7 +341,7 @@ echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 # ---
 
 # Only request files path if this isn't a live build.
-if [ ! ${BUILDTYPE} = "LIVE" ]; then
+if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
   FILESPATHDEFAULT="$BUILDPATH/../../files/$MULTISITENAME"
   until [ -d "$FILESPATH" ]; do
@@ -315,7 +380,7 @@ GITHUBUSER_DEFAULT="fourcommunications"
 
 # ---
 
-GITHUBUSER_CORE=$GITHUBUSER_DEFAULT
+GITHUBUSER_CORE="$GITHUBUSER_DEFAULT"
 
 echo -n "
 *************************************************************************
@@ -324,19 +389,34 @@ What is the Github account from which you want to clone the drupal7_core repo? L
 :"
 read GITHUBUSER_CORE_ENTERED
 if [ ! "x$GITHUBUSER_CORE_ENTERED" = "x" ]; then
-  GITHUBUSER_CORE=$GITHUBUSER_CORE_ENTERED
+  GITHUBUSER_CORE="$GITHUBUSER_CORE_ENTERED"
 fi
 echo "Using: $GITHUBUSER_CORE
 
 Cloning Drupal core from $GITHUBUSER_CORE..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
-cd "$BUILDPATH/drupal7_core"
-git checkout master
-git config core.fileMode false
+git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
+cd "drupal7_core"
+
+if [ ! "x$GITDEPTH" = "x" ]; then
+  removegit
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+fi
 
 # ---
+
+exit monkey
+going back up to not ask for build type if one provided
+then need to come back down to checkout shallow depth = 1 and rm the git directories if LIVE build, followed by moving the files and creating the tar.gz when done.
+also need to set/fix the directory and archive names for live builds
+
 
 echo -n "
 *************************************************************************
@@ -351,7 +431,7 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_CORE_REMOTE=$GITHUBUSER_DEFAULT
+  GITHUBUSER_CORE_REMOTE="$GITHUBUSER_DEFAULT"
   echo -n "
 *************************************************************************
 
@@ -368,7 +448,7 @@ Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
 
   echo "Using: $GITHUBUSER_CORE_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
+  REMOTE="git@github.com/$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
 
   git remote add upstream ${REMOTE}
 
@@ -383,7 +463,7 @@ fi
 
 # ---
 
-GITHUBUSER_SITES_COMMON=${GITHUBUSER_CORE}
+GITHUBUSER_SITES_COMMON="$GITHUBUSER_CORE"
 
 echo -n "
 *************************************************************************
@@ -392,17 +472,26 @@ What is the Github account from which you want to clone the drupal7_sites_common
 : "
 read GITHUBUSER_SITES_COMMON_ENTERED
 if [ ! "x$GITHUBUSER_SITES_COMMON_ENTERED" = "x" ]; then
-  GITHUBUSER_SITES_COMMON=$GITHUBUSER_SITES_COMMON_ENTERED
+  GITHUBUSER_SITES_COMMON="$GITHUBUSER_SITES_COMMON_ENTERED"
 fi
 echo "Using: $GITHUBUSER_SITES_COMMON
 
 Cloning Drupal sites common from $GITHUBUSER_SITES_COMMON..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
-cd "$BUILDPATH/drupal7_sites_common"
-git checkout master
-git config core.fileMode false
+git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
+cd "drupal7_sites_common"
+
+if [ ! "x$GITDEPTH" = "x" ]; then
+  removegit
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+fi
 
 # ---
 
@@ -419,7 +508,7 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_SITES_COMMON_REMOTE=$GITHUBUSER_CORE_REMOTE
+  GITHUBUSER_SITES_COMMON_REMOTE="$GITHUBUSER_CORE_REMOTE"
   echo -n "
 *************************************************************************
 
@@ -427,16 +516,16 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 : "
   read GITHUBUSER_SITES_COMMON_REMOTE_ENTERED
   if [ ! "x$GITHUBUSER_SITES_COMMON_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_SITES_COMMON_REMOTE=$GITHUBUSER_SITES_COMMON_REMOTE_ENTERED
+    GITHUBUSER_SITES_COMMON_REMOTE="$GITHUBUSER_SITES_COMMON_REMOTE_ENTERED"
   fi
 
   cd "$BUILDPATH/drupal7_sites_common"
 
   echo "Using: $GITHUBUSER_SITES_COMMON_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_SITES_COMMON_REMOTE/drupal7_sites_common.git"
+  REMOTE="git@github.com/$GITHUBUSER_SITES_COMMON_REMOTE/drupal7_sites_common.git"
 
-  git remote add upstream $REMOTE
+  git remote add upstream "$REMOTE"
 
   echo "Remote '$REMOTE' added. Please check the following output is correct:
 
@@ -453,9 +542,9 @@ fi
 # ---
 
 # Only clone multisite template if this is a LOCAL build.
-if [ ${BUILDTYPE} = "LOCAL" ]; then
+if [ "$BUILDTYPE" = "LOCAL" ]; then
 
-  GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_SITES_COMMON
+  GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_SITES_COMMON"
 
   echo -n "
   *************************************************************************
@@ -464,17 +553,26 @@ if [ ${BUILDTYPE} = "LOCAL" ]; then
   : "
   read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
   if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
-    GITHUBUSER_MULTISITE_TEMPLATE=$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
+    GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED"
   fi
   echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
 
   Cloning Drupal multisite template from $GITHUBUSER_MULTISITE_TEMPLATE..."
 
   cd "$BUILDPATH"
-  git clone --recursive "https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
-  cd "$BUILDPATH/drupal7_multisite_template"
-  git checkout master
-  git config core.fileMode false
+  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
+  cd "drupal7_multisite_template"
+
+  if [ ! "x$GITDEPTH" = "x" ]; then
+    removegit
+  else
+    # Ignore file permission changes.
+    git config core.fileMode false
+  fi
+
+  if [ ! "x$CREATETAG" = "x" ]; then
+    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  fi
 
   # ---
 
@@ -491,7 +589,7 @@ if [ ${BUILDTYPE} = "LOCAL" ]; then
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^y" ;then
     # Add remotes.
-    GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_SITES_COMMON_REMOTE
+    GITHUBUSER_MULTISITE_TEMPLATE_REMOTE="$GITHUBUSER_SITES_COMMON_REMOTE"
     echo -v "
   *************************************************************************
 
@@ -499,14 +597,14 @@ if [ ${BUILDTYPE} = "LOCAL" ]; then
   : "
     read GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
     if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED" = "x" ]; then
-      GITHUBUSER_MULTISITE_TEMPLATE_REMOTE=$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
+      GITHUBUSER_MULTISITE_TEMPLATE_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED"
     fi
 
     cd "$BUILDPATH/drupal7_multisite_template"
 
     echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_REMOTE. Adding remote..."
 
-    REMOTE="https://github.com/$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
+    REMOTE="git@github.com/$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
 
     git remote add upstream $REMOTE
 
@@ -523,7 +621,7 @@ if [ ${BUILDTYPE} = "LOCAL" ]; then
 fi
 
 # Now multisitemaker.
-GITHUBUSER_MULTISITEMAKER=$GITHUBUSER_SITES_COMMON
+GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_SITES_COMMON"
 
 echo -n "
 *************************************************************************
@@ -539,10 +637,19 @@ echo "Using: $GITHUBUSER_MULTISITEMAKER
 Cloning Drupal multisite template from $GITHUBUSER_MULTISITEMAKER..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
-cd "$BUILDPATH/greyhead_multisitemaker"
-git checkout master
-git config core.fileMode false
+git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
+cd "greyhead_multisitemaker"
+
+if [ ! "x$GITDEPTH" = "x" ]; then
+  removegit
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+fi
 
 # ---
 
@@ -574,7 +681,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_MULTISITEMAKER_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
+  REMOTE="git@github.com/$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
 
   git remote add upstream "$REMOTE"
 
@@ -605,10 +712,19 @@ echo "Using: $GITHUBUSER_SCRIPTS
 Cloning Drupal multisite template from $GITHUBUSER_SCRIPTS..."
 
 cd "$BUILDPATH"
-git clone --recursive "https://github.com/$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
-cd "$BUILDPATH/scripts-of-usefulness"
-git checkout master
-git config core.fileMode false
+git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
+cd "scripts-of-usefulness"
+
+if [ ! "x$GITDEPTH" = "x" ]; then
+  removegit
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+fi
 
 # ---
 
@@ -640,7 +756,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
 
-  REMOTE="https://github.com/$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
+  REMOTE="git@github.com/$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
@@ -657,46 +773,130 @@ fi
 # Download Drupal 7 core.
 "$STARTINGDIRECTORY/script-components/download-drupal7-core.sh" --buildpath="$BUILDPATH" --drupalversion=7
 
+cd "$BUILDPATH"
 echo -n "
 *************************************************************************
 
-Check out alexharries/drupal7_common_features?
-Y/n: "
+Which Features repo do you want to clone, if any?
+
+1. fourcommunications/drupal7_common_features (restricted access)
+2. alexharries/drupal7_common_features (restricted access)
+3. Another git repository and branch of your choosing
+4. No Features checkout.
+
+: "
 
 old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  cd "$BUILDPATH"
-  git clone --recursive https://github.com/alexharries/drupal7_common_features.git drupal7_common_features
-
-  echo "
-
-  ---
-
-  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_common_features:"
-
-  ln -s "$BUILDPATH/drupal7_common_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/features"
+if echo "$answer" | grep -iq "^1" ;then
+  # fourcomms
+  FEATURESCHECKOUT="four"
+elif echo "$answer" | grep -iq "^2" ;then
+  # alexharries
+  FEATURESCHECKOUT="alexharries"
+elif echo "$answer" | grep -iq "^3" ;then
+  # other
+  FEATURESCHECKOUT="custom"
+elif echo "$answer" | grep -iq "^4" ;then
+  # none
+  FEATURESCHECKOUT="none"
 fi
 
-echo -n "
+if [ "$FEATURESCHECKOUT" = "four" ]; then
+  FEATURESCLONEURL="git@github.com/fourcommunications/drupal7_common_features.git"
+fi
+
+if [ "$FEATURESCHECKOUT" = "alexharries" ]; then
+  FEATURESCLONEURL="git@github.com/alexharries/drupal7_common_features.git"
+fi
+
+# Work out what branch we want to check out our project files from.
+if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ]; then
+  CUSTOMFEATURESBRANCH_DEFAULT="$PROJECTSBRANCH"
+fi
+
+if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+  echo -n "
 *************************************************************************
 
-Check out drupal7_four_features? (This will only work if you have access to this Four Communications repo) Y/n: "
+What branch should be checked out? (Leave blank for default '$CUSTOMFEATURESBRANCH_DEFAULT') : "
+  read CUSTOMFEATURESBRANCH
 
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  cd "$BUILDPATH"
-  git clone --recursive https://github.com/fourcommunications/drupal7_four_features.git drupal7_four_features
+  if [ "x$CUSTOMFEATURESBRANCH" = "X" ]; then
+    CUSTOMFEATURESBRANCH="$CUSTOMFEATURESBRANCH_DEFAULT"
+  fi
 
-  echo "
-
-  ---
-
-  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_four_features:"
-
-  ln -s "$BUILDPATH/drupal7_four_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/four-features"
 fi
+
+if [ "$FEATURESCHECKOUT" = "custom" ]; then
+  echo -n "
+*************************************************************************
+
+What is the full clone URL of the repo? : "
+  read FEATURESCLONEURL
+
+  if [ "x$FEATURESCLONEURL" = "X" ]; then
+    echo "No URL entered - cancelling and will create an empty dir instead."
+    FEATURESCHECKOUT=4
+  fi
+fi
+
+if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+  git clone "$GITDEPTH" --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" drupal7_common_features
+  cd drupal7_common_features
+
+  if [ ! "x$GITDEPTH" = "x" ]; then
+    removegit
+  else
+    # Ignore file permission changes.
+    git config core.fileMode false
+  fi
+
+  if [ ! "x$CREATETAG" = "x" ]; then
+    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  fi
+fi
+
+#echo -n "
+#*************************************************************************
+#
+#Check out alexharries/drupal7_common_features?
+#Y/n: "
+#
+#old_stty_cfg=$(stty -g)
+#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#if echo "$answer" | grep -iq "^y" ;then
+#  cd "$BUILDPATH"
+#  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com/alexharries/drupal7_common_features.git drupal7_common_features
+#
+#  echo "
+#
+#  ---
+#
+#  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_common_features:"
+#
+#  ln -s "$BUILDPATH/drupal7_common_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/features"
+#fi
+#
+#echo -n "
+#*************************************************************************
+#
+#Check out drupal7_four_features? (This will only work if you have access to this Four Communications repo) Y/n: "
+#
+#old_stty_cfg=$(stty -g)
+#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#if echo "$answer" | grep -iq "^y" ;then
+#  cd "$BUILDPATH"
+#  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com/fourcommunications/drupal7_four_features.git drupal7_four_features
+#
+#  echo "
+#
+#  ---
+#
+#  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_four_features:"
+#
+#  ln -s "$BUILDPATH/drupal7_four_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/four-features"
+#fi
 
 # drupal7_sites_projects
 
@@ -721,7 +921,7 @@ if echo "$answer" | grep -iq "^1" ;then
   PROJECTSCHECKOUT="four"
 elif echo "$answer" | grep -iq "^2" ;then
   # alexharries
-  PROJECTSCHECKOUT="greyhead"
+  PROJECTSCHECKOUT="alexharries"
 elif echo "$answer" | grep -iq "^3" ;then
   # other
   PROJECTSCHECKOUT="custom"
@@ -731,18 +931,19 @@ elif echo "$answer" | grep -iq "^4" ;then
 fi
 
 if [ "$PROJECTSCHECKOUT" = "four" ]; then
-  PROJECTSCLONEURL="https://github.com/fourcommunications/drupal7_sites_projects.git"
+  PROJECTSCLONEURL="git@github.com/fourcommunications/drupal7_sites_projects.git"
 fi
 
-if [ "$PROJECTSCHECKOUT" = "greyhead" ]; then
-  PROJECTSCLONEURL="https://github.com/alexharries/drupal7_sites_projects.git"
+if [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
+  PROJECTSCLONEURL="git@github.com/alexharries/drupal7_sites_projects.git"
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ]; then
-  CUSTOMPROJECTSBRANCH_DEFAULT="develop"
+# Work out what branch we want to check out our project files from.
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
+  CUSTOMPROJECTSBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo -n "
 *************************************************************************
 
@@ -750,7 +951,7 @@ What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRAN
   read CUSTOMPROJECTSBRANCH
 
   if [ "x$CUSTOMPROJECTSBRANCH" = "X" ]; then
-    CUSTOMPROJECTSBRANCH=$CUSTOMPROJECTSBRANCH_DEFAULT
+    CUSTOMPROJECTSBRANCH="$CUSTOMPROJECTSBRANCH_DEFAULT"
   fi
 
 fi
@@ -768,60 +969,25 @@ What is the full clone URL of the repo? : "
   fi
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "greyhead" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  git clone --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  git clone "$GITDEPTH" --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
   cd drupal7_sites_projects
-  git checkout "$PROJECTSBRANCH"
+
+  if [ ! "x$GITDEPTH" = "x" ]; then
+    removegit
+  else
+    # Ignore file permission changes.
+    git config core.fileMode false
+  fi
+
+  if [ ! "x$CREATETAG" = "x" ]; then
+    git tag "$MULTISITENAME-v$CREATETAG" -s -a -m "Tagging '$MULTISITENAME-v$CREATETAG' for $MULTISITENAME." && git push origin "$MULTISITENAME-v$CREATETAG"
+  fi
 fi
 
 if [ "$PROJECTSCHECKOUT" = "create" ]; then
   mkdir -p "$BUILDPATH/drupal7_sites_projects"
 fi
-
-#if echo "$answer" | grep -iq "^y" ;then
-#else
-#  echo -n "
-#*************************************************************************
-#
-#Check out alexharries/drupal7_sites_projects (if you have access)? Y/n: "
-#
-#  old_stty_cfg=$(stty -g)
-#  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#  if echo "$answer" | grep -iq "^y" ;then
-#    cd "$BUILDPATH"
-#    git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
-#    cd drupal7_sites_projects
-#    git checkout "$PROJECTSBRANCH"
-#  else
-#    echo -n "
-#*************************************************************************
-#
-#Check out another alexharries/drupal7_sites_projects (if you have access)? Y/n: "
-#
-#    old_stty_cfg=$(stty -g)
-#    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#    if echo "$answer" | grep -iq "^y" ;then
-#      cd "$BUILDPATH"
-#      git clone --recursive https://github.com/alexharries/drupal7_sites_projects.git drupal7_sites_projects
-#      cd drupal7_sites_projects
-#      git checkout "$PROJECTSBRANCH"
-#    else
-#    echo -n "
-#*************************************************************************
-#
-#Create the drupal7_sites_projects directory?
-#
-#This will allow you to set up a working local Drupal install, if you wish. Note that you will have to figure out how you want to save the work you do in this directory.
-#
-#Y/n: "
-#
-#    old_stty_cfg=$(stty -g)
-#    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#    if echo "$answer" | grep -iq "^y" ;then
-#      mkdir -p "$BUILDPATH/drupal7_sites_projects"
-#    fi
-#  fi
-#fi
 
 if [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
   # If Drupal core and drupal7_sites_common were checked out ok, and we have
@@ -853,7 +1019,7 @@ Multisite directory $MULTISITEPHYSICALLOCATION not found. Do you want to create 
 
 Do you want to create a Bootstrap sub-subtheme and commit it to the repo?
 
-(Le quoi? See https://github.com/alexharries/greyhead_bootstrap for more info.)
+(Le quoi? See git@github.com/alexharries/greyhead_bootstrap for more info.)
 
 Y/n: "
 
@@ -1085,7 +1251,7 @@ fi
 
 # Only symlink to files if we're not building for live, if the multisite dir
 # is set up, and there isn't already a files link/directory.
-if [[ ! ${BUILDTYPE} = "LIVE" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" && ! -e "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files" ]]; then
+if [[ ! "$BUILDTYPE" = "LIVE" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" && ! -e "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files" ]]; then
   echo "
 *************************************************************************
 
@@ -1098,7 +1264,7 @@ fi
 
 # Only create local_databases.php and local_settings.php files if we're not
 # building for live.
-if [ ! ${BUILDTYPE} = "LIVE" ]; then
+if [ ! "$BUILDTYPE" = "LIVE" ]; then
   echo -n "
   *************************************************************************
 
@@ -1488,6 +1654,135 @@ the database details."
   fi
 fi
 
+# If we're building for live, move the directories around and create the tar.gz
+# archive.
+if [ "$BUILDTYPE" = "LIVE" ]; then
+#  This is the directory structure we have - a . indicates the directory needs
+#  to be moved, if it exists.
+#
+#  /
+#    drupal7_core
+#      www
+#        sites -> /drupal7_sites_common
+#  . drupal7_common_features*
+#  . drupal7_four_features*
+#  . drupal7_sites_common
+#      [MULTISITENAME]* -> /drupal7_sites_projects/[MULTISITENAME]
+#      all
+#        libraries
+#        modules
+#          contrib
+#          custom
+#          features* -> /drupal7_common_features
+#          four-features* -> /drupal7_four_features
+#        themes
+#      sites.php
+#    drupal7_sites_projects*
+#    . [MULTISITENAME]
+#
+#  This is the directory structure we want:
+#
+#  /
+#    drupal7_core
+#      www
+#        sites
+#          [MULTISITENAME]*
+#          all
+#            libraries
+#            modules
+#              contrib
+#              custom
+#              features
+#              four-features
+#            themes
+#          sites.php
+#
+#  Therefore, directories to be moved, if they exist:
+#
+#  . drupal7_sites_common (must go first)
+#  . drupal7_common_features*
+#  . drupal7_four_features*
+#  . [MULTISITENAME]
+
+  cd "$BUILDPATH"
+
+  # If drupal7_sites_common is present.
+  if [ -d "drupal7_sites_common" ]; then
+    # If drupal7_core/www/sites exists.
+    if [ -e "drupal7_core/www/sites" ]; then
+      rm drupal7_core/www/sites
+    fi
+
+    # Move drupal7_sites_common to drupal7_core/www/sites.
+    mv drupal7_sites_common drupal7_core/www/sites
+  fi
+
+  # If drupal7_common_features is present.
+  if [ -d "drupal7_common_features" ]; then
+    # If drupal7_core/www/sites/all/features exists.
+    if [ -e "drupal7_core/www/sites/all/features" ]; then
+      rm drupal7_core/www/sites/all/features
+    fi
+
+    # Move drupal7_common_features to drupal7_core/www/sites/all/features.
+    mv drupal7_common_features drupal7_core/www/sites/all/features
+  fi
+
+  # If drupal7_four_features is present.
+  if [ -d "drupal7_four_features" ]; then
+    # If drupal7_core/www/sites/all/four-features exists.
+    if [ -e "drupal7_core/www/sites/all/four-features" ]; then
+      rm drupal7_core/www/sites/all/four-features
+    fi
+
+    # Move drupal7_four_features to drupal7_core/www/sites/all/four-features.
+    mv drupal7_four_features drupal7_core/www/sites/all/four-features
+  fi
+
+  # If drupal7_sites_projects/$MULTISITENAME is present.
+  if [ -d "drupal7_sites_projects/$MULTISITENAME" ]; then
+    # If drupal7_core/www/sites/$MULTISITENAME exists.
+    if [ -e "drupal7_core/www/sites/$MULTISITENAME" ]; then
+      rm "drupal7_core/www/sites/$MULTISITENAME"
+    fi
+
+    # Move drupal7_sites_projects/$MULTISITENAME to
+    # drupal7_core/www/sites/$MULTISITENAME.
+    mv "drupal7_sites_projects/$MULTISITENAME" "drupal7_core/www/sites/$MULTISITENAME"
+  fi
+
+  # Now create the tar.gz. Change to the parent dir of the build directory.
+  cd "$BUILDPATH/.."
+
+  # Create a new directory called drupal7-$MULTISITENAME-v$CREATETAG.tar.gz
+  TAGARCHIVENAME="drupal7-$MULTISITENAME-v$CREATETAG.tar.gz"
+  tar -czvf "$BUILDPATH/../$TAGARCHIVENAME" "$BUILDPATH"
+
+  # Do we want to keep the build directory, e.g. for debuggerising purposes?
+  echo -n "
+*************************************************************************
+
+The live deployment has been built and tagged, and an archive created in
+
+$BUILDPATH/../$TAGARCHIVENAME
+
+Do you want to remove the unarchived Drupal build, e.g. for debugging, or
+would you like to delete them?
+
+(R)emove or (K)eep: "
+
+  old_stty_cfg=$(stty -g)
+  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+  if echo "$answer" | grep -iq "^r" ;then
+    cd "$BUILDPATH/.."
+    rm -rf "$BUILDPATH"
+  else
+    cd "$BUILDPATH"
+  fi
+else
+  cd "$BUILDPATH"
+fi
+
 echo "
 *************************************************************************
 
@@ -1496,4 +1791,3 @@ All finished. Enjoy! :)
 *************************************************************************
 "
 
-cd "$BUILDPATH"
