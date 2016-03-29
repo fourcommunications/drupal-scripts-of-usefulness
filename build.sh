@@ -163,30 +163,29 @@ https://github.com/fourcommunications/greyhead_multisitemaker for full
 destructions.
 
 *************************************************************************
+
+Important information about branches
+------------------------------------
+Note that LOCAL and DEV builds will check out the 'develop' branch of each
+repo, if you choose to download one; STAGING builds will use 'rc' branches,
+while LIVE builds use MASTER.
+
+You need to make sure you have merged from the dev branch to rc to move
+from development into staging, and merge from the rc branch to master
+once everything passes testing ready for a live build
+
 *************************************************************************
 
 "
 
-if [ ! "x$BUILDTYPE" = "x" ]; then
+if [ "x$BUILDTYPE" = "x" ]; then
   until [ ! "x$BUILDTYPE" = "x" ]; do
     echo -n "What type of build is this?
 
 1: LOCAL
 2: DEV
 3: STAGING
-
-(Live builds will be coming shortly. To deploy a live build created with
-this script, see live-deploy.sh.)
-
-
-Important information about branches
-------------------------------------
-Note that LOCAL and DEV builds will check out the 'develop' branch of the
-drupal7_sites_projects repo, if you choose to download one; STAGING builds
-will use the 'rc' branch, while LIVE builds use MASTER, so you need to make
-sure you have merged from the dev branch to rc to move from development into
-testing, and merge from the rc branch to master once everything passes
-testing.
+4: LIVE (To deploy a live build created with this script, see live-deploy.sh)
 
 : "
 
@@ -215,12 +214,21 @@ GITDEPTH=""
 if [ ! "x$BUILDFROMTAG" = "x" ]; then
   PROJECTSBRANCH="$BUILDFROMTAG"
   GITDEPTH="--depth 1"
+  BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
 elif [[ "$BUILDTYPE" = "LOCAL" || "$BUILDTYPE" = "DEV" ]]; then
   PROJECTSBRANCH="develop"
+  BUILDPATH_BUILDTYPE="develop"
 elif [[ "$BUILDTYPE" = "STAGING" ]]; then
   PROJECTSBRANCH="rc"
+  BUILDPATH_BUILDTYPE="staging"
 elif [[ "$BUILDTYPE" = "LIVE" ]]; then
   PROJECTSBRANCH="master"
+
+  if [ ! "x$CREATETAG" = "x" ]; then
+    BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
+  else
+    BUILDPATH_BUILDTYPE="live"
+  fi
 fi
 
 echo -n "
@@ -282,8 +290,14 @@ if [ "x$BUILDPATH_SUBDIR" = "x" ]; then
   BUILDPATH_SUBDIR="default"
 fi
 
+# Get ths current path.
 PWD=$(pwd)
-BUILDPATH_DEFAULT="$PWD/../builds/$BUILDPATH_SUBDIR"
+
+# Example PWD: /Volumes/Sites/4Com/builds/develop/monkey/scripts-of-usefulness
+
+# Example build path: /Volumes/Sites/4Com/builds/develop/monkey/scripts-of-usefulness/../../../$BUILDSUBDIRECTORY/$MULTISITENAME
+# ... which becomes: /Volumes/Sites/4Com/builds/develop/crapterliving
+BUILDPATH_DEFAULT="$PWD/../../../$BUILDPATH_BUILDTYPE/$BUILDPATH_SUBDIR"
 
 BUILDPATH="$PWD"
 until [ ! -d "$BUILDPATH" ]; do
@@ -1774,6 +1788,7 @@ would you like to delete them?
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^r" ;then
+    echo "Removing $BUILDPATH ..."
     cd "$BUILDPATH/.."
     rm -rf "$BUILDPATH"
   else
