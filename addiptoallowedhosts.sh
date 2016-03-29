@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 var="AllowedHosts"
 iptoadd=$1
 #grep -F "$var" .htaccess | sed -ie "s/$/& $1/g"
