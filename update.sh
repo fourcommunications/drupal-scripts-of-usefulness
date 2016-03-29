@@ -4,17 +4,16 @@ clear
 echo -n "
 *************************************************************************
 
-Update Local Dev Environment
+Update a Drupal 7 build
 
 *************************************************************************
 
 This script will (only*) update a Drupal 7 site built with the Greyhead
 build-drupal.sh script from
-https://github.com/alexharries/drupal-scripts-of-usefulness/blob/master/build-drupal.sh
+https://github.com/alexharries/drupal-scripts-of-usefulness/blob/master/build.sh
 
-This script can do the following to update your local dev build with the
-latest upstream changes for its codebase - you can choose which of these
-steps you want to run:
+This script can do the following to update a build - you can choose which of
+these steps you want to run:
 
 1. @TODO: Update any Drupal contrib modules in the sites/all/modules/contrib and
    sites/[multisite]/modules/contrib directories.
@@ -68,19 +67,20 @@ Using: $MULTISITENAME.
 
 # ---
 
-#echo -n "(Optional) What is the URL of the Drupal site, without 'http://' - e.g.
-#www.example.com? You need to provide this if you want to configure the
-#database connection using this script, or have Drupal automagically create the
-#settings.this_site_url.info file.
-#
-#:"
-#
-#read SITEURI
-#echo "
-#
-#Using: $SITEURI
-#
-#"
+if [ ! "x$MULTISITENAME" = "x" ]; then
+  echo -n "What is the URL of the Drupal site, without 'http://' - e.g.
+  www.example.com? You need to provide this to run updates for Drupal core
+  or contrib modules.
+
+  :"
+
+  read SITEURI
+  echo "
+
+  Using: $SITEURI
+
+  "
+fi
 
 # ---
 
@@ -170,6 +170,30 @@ stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with st
 if echo "$answer" | grep -iq "^y" ;then
   PUSHORIGIN=1
 fi
+
+# ---
+
+cd "$DEPLOYDIRECTORY"
+
+# If we're updating Drupal core and/or contrib modules, cd to the multisite
+# directory and run drush up now.
+if [ ! "x$SITEURI" = "x" ]; then
+  if [ "$UPDATECORE" = 1 ] || [ "$UPDATECONTRIB" = 1 ]; then
+    cd "$DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME"
+
+    if [ "$UPDATECORE" = 1 ]; then
+      echo "Updating Drupal core..."
+      drush --uri="$SITEURI" up drupal
+    fi
+
+    if [ "$UPDATECONTRIB" = 1 ]; then
+      echo "Updating contrib modules..."
+      drush --uri="$SITEURI" up --no-core
+    fi
+  fi
+fi
+
+# ---
 
 cd "$DEPLOYDIRECTORY"
 echo "cd-ing to deploy directory $DEPLOYDIRECTORY."
