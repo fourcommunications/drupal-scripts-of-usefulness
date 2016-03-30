@@ -31,6 +31,23 @@ while [ "$#" -gt 0 ]; do
         BUILDPATH="${1#*=}"
         echo "Build path: $BUILDPATH"
         ;;
+    --filespath=*)
+        FILESPATH="${1#*=}"
+        echo "FILESPATH: $FILESPATH"
+        ;;
+# TODO: Other fields to be added: GITHUBUSER_CORE, CORE_ADD_UPSTREAM, GITHUBUSER_CORE_UPSTREAM,
+    --githubuser=*)
+        GITHUBUSER_CORE="${1#*=}"
+        echo "GITHUBUSER_CORE: $GITHUBUSER_CORE"
+        ;;
+    --githubuserupstream=*)
+        GITHUBUSER_UPSTREAM="${1#*=}"
+        echo "GITHUBUSER_UPSTREAM: $GITHUBUSER_UPSTREAM"
+        ;;
+    --coreaddupstream=*)
+        CORE_ADD_UPSTREAM="${1#*=}"
+        echo "CORE_ADD_UPSTREAM: $CORE_ADD_UPSTREAM"
+        ;;
     --help) print_help;;
     *)
       printf "***********************************************************\n"
@@ -333,36 +350,38 @@ PWD=$(pwd)
 # ... which becomes: /Volumes/Sites/4Com/builds/develop/crapterliving
 BUILDPATH_DEFAULT="$PWD/../../../$BUILDPATH_BUILDTYPE/$BUILDPATH_SUBDIR"
 
-BUILDPATH="$PWD"
-until [ ! -d "$BUILDPATH" ]; do
-  echo -n "
-*************************************************************************
+if [ "x$BUILDPATH" = "x" ]; then
+  BUILDPATH="$PWD"
+  until [ ! -d "$BUILDPATH" ]; do
+    echo -n "
+  *************************************************************************
 
-What directory should we build Drupal in, without a trailing slash?
+  What directory should we build Drupal in, without a trailing slash?
 
-This directory MUST NOT already exist (since you could accidentally
-overwrite another project build).
+  This directory MUST NOT already exist (since you could accidentally
+  overwrite another project build).
 
-Leave blank to use the default: '$BUILDPATH_DEFAULT'
-:"
-  read BUILDPATH_ENTERED
-  if [ ! "x$BUILDPATH_ENTERED" = "x" ]; then
-    BUILDPATH="$BUILDPATH_ENTERED"
-  else
-    BUILDPATH="$BUILDPATH_DEFAULT"
-  fi
+  Leave blank to use the default: '$BUILDPATH_DEFAULT'
+  :"
+    read BUILDPATH_ENTERED
+    if [ ! "x$BUILDPATH_ENTERED" = "x" ]; then
+      BUILDPATH="$BUILDPATH_ENTERED"
+    else
+      BUILDPATH="$BUILDPATH_DEFAULT"
+    fi
 
-  if [ -d "$BUILDPATH" ]; then
-    echo "
+    if [ -d "$BUILDPATH" ]; then
+      echo "
 ***************************************************************
 WARNING:
 Directory '$BUILDPATH' already exists; moving it to
 $BUILDPATH-old
 ***************************************************************
-  "
-    mv "$BUILDPATH" "$BUILDPATH-old"
-  fi
-done
+    "
+      mv "$BUILDPATH" "$BUILDPATH-old"
+    fi
+  done
+fi
 
 echo "Making directory $BUILDPATH..."
 mkdir -p "$BUILDPATH"
@@ -394,53 +413,57 @@ echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
   FILESPATHDEFAULT="$BUILDPATH/../../files/$BUILDPATH_BUILDTYPE/$MULTISITENAME"
-  until [ -d "$FILESPATH" ]; do
-    echo -n "
-  *************************************************************************
+  if [ -d "$FILESPATH" ]; then
+    until [ -d "$FILESPATH" ]; do
+      echo -n "
+    *************************************************************************
 
-  What is the absolute path of the Drupal files directory (including the
-  directory itself), and without trailing slash?
+    What is the absolute path of the Drupal files directory (including the
+    directory itself), and without trailing slash?
 
-  A symlink to this directory will be created in your multisite's directory.
+    A symlink to this directory will be created in your multisite's directory.
 
-  Default: '$FILESPATHDEFAULT': "
-    read FILESPATHENTERED
-    if [ "x$FILESPATHENTERED" = "x" ]; then
-      FILESPATH="$FILESPATHDEFAULT"
-    else
-      FILESPATH="$FILESPATHENTERED"
-    fi
-    echo "
+    Default: '$FILESPATHDEFAULT': "
+      read FILESPATHENTERED
+      if [ "x$FILESPATHENTERED" = "x" ]; then
+        FILESPATH="$FILESPATHDEFAULT"
+      else
+        FILESPATH="$FILESPATHENTERED"
+      fi
+      echo "
 
-    Using: $FILESPATH - attempting to make the directory if it doesn't
-    already exist..."
+      Using: $FILESPATH - attempting to make the directory if it doesn't
+      already exist..."
 
-    mkdir -p "$FILESPATH"
+      mkdir -p "$FILESPATH"
 
-    if [ ! -d "$FILESPATH" ]; then
-      echo "Oh no! Unable to create the directory at $FILESPATH - does this script have permission to make directories there?"
-    fi
-  done
+      if [ ! -d "$FILESPATH" ]; then
+        echo "Oh no! Unable to create the directory at $FILESPATH - does this script have permission to make directories there?"
+      fi
+    done
+  fi
 
 fi
 
 # ---
 
+# Have we been passed in a --githubuser parameter? If not, get it now.
 GITHUBUSER_DEFAULT="fourcommunications"
 
-# ---
+if [ "x$GITHUBUSER_CORE" = "x" ]; then
+  GITHUBUSER_CORE="$GITHUBUSER_DEFAULT"
 
-GITHUBUSER_CORE="$GITHUBUSER_DEFAULT"
+  echo -n "
+  *************************************************************************
 
-echo -n "
-*************************************************************************
-
-What is the Github account from which you want to clone the drupal7_core repo? Leave blank to use the default: '$GITHUBUSER_CORE'
-:"
-read GITHUBUSER_CORE_ENTERED
-if [ ! "x$GITHUBUSER_CORE_ENTERED" = "x" ]; then
-  GITHUBUSER_CORE="$GITHUBUSER_CORE_ENTERED"
+  What is the Github account from which you want to clone the drupal7_core repo? Leave blank to use the default: '$GITHUBUSER_CORE'
+  :"
+  read GITHUBUSER_CORE_ENTERED
+  if [ ! "x$GITHUBUSER_CORE_ENTERED" = "x" ]; then
+    GITHUBUSER_CORE="$GITHUBUSER_CORE_ENTERED"
+  fi
 fi
+
 echo "Using: $GITHUBUSER_CORE
 
 Cloning Drupal core from $GITHUBUSER_CORE..."
@@ -462,39 +485,51 @@ fi
 
 # ---
 
-echo -n "
-*************************************************************************
-
-Do you want to add an upstream remote for drupal7_core? E.g. if this is a
-forked repo, you can add the fork's source repo so you can then pull in changes
-by running: git fetch upstream; git checkout master; git merge upstream/master
-
-Press Y/n: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  # Add remotes.
-  GITHUBUSER_CORE_REMOTE="$GITHUBUSER_DEFAULT"
+# Do we know if we're adding an upstream repo to core?
+if [ ! "$CORE_ADD_UPSTREAM" = "yes" ] && [ ! "$CORE_ADD_UPSTREAM" = "no" ]; then
+  # Have we been passed in a --githubuser parameter? If not, get it now.
   echo -n "
+  *************************************************************************
+
+  Do you want to add an upstream remote for drupal7_core? E.g. if this is a
+  forked repo, you can add the fork's source repo so you can then pull in changes
+  by running: git fetch upstream; git checkout master; git merge upstream/master
+
+  Press Y/n: "
+
+  old_stty_cfg=$(stty -g)
+  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+  if echo "$answer" | grep -iq "^y" ;then
+    CORE_ADD_UPSTREAM="yes"
+  else
+    CORE_ADD_UPSTREAM="no"
+  fi
+fi
+
+if [ "$CORE_ADD_UPSTREAM" = "yes" ]; then
+  if [ "x$GITHUBUSER_CORE_UPSTREAM" = "x" ]; then
+    # Add remotes.
+    GITHUBUSER_CORE_UPSTREAM="$GITHUBUSER_DEFAULT"
+    echo -n "
 *************************************************************************
 
 What is the upstream Github account to pull changes from?
-Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
+Leave blank to use the default: '$GITHUBUSER_CORE_UPSTREAM'
 : "
 
-  read GITHUBUSER_CORE_REMOTE_ENTERED
-  if [ ! "x$GITHUBUSER_CORE_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_CORE_REMOTE=${GITHUBUSER_CORE_REMOTE_ENTERED}
+    read GITHUBUSER_CORE_UPSTREAM_ENTERED
+    if [ ! "x$GITHUBUSER_CORE_UPSTREAM_ENTERED" = "x" ]; then
+      GITHUBUSER_CORE_UPSTREAM="$GITHUBUSER_CORE_UPSTREAM_ENTERED"
+    fi
   fi
 
   cd "$BUILDPATH/drupal7_core"
 
-  echo "Using: $GITHUBUSER_CORE_REMOTE. Adding remote..."
+  echo "Using: $GITHUBUSER_CORE_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
+  REMOTE="git@github.com:$GITHUBUSER_CORE_UPSTREAM/drupal7_core.git"
 
-  git remote add upstream ${REMOTE}
+  git remote add upstream "$REMOTE"
 
   echo "Remote '$REMOTE' added. Please check the following output is correct:
 
@@ -502,7 +537,6 @@ Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
   git remote -v
 
   echo "Continuing..."
-
 fi
 
 # ---
@@ -552,22 +586,22 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_SITES_COMMON_REMOTE="$GITHUBUSER_CORE_REMOTE"
+  GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_CORE_UPSTREAM"
   echo -n "
 *************************************************************************
 
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON_REMOTE'
+What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON_UPSTREAM'
 : "
-  read GITHUBUSER_SITES_COMMON_REMOTE_ENTERED
-  if [ ! "x$GITHUBUSER_SITES_COMMON_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_SITES_COMMON_REMOTE="$GITHUBUSER_SITES_COMMON_REMOTE_ENTERED"
+  read GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED
+  if [ ! "x$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED" = "x" ]; then
+    GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
   fi
 
   cd "$BUILDPATH/drupal7_sites_common"
 
-  echo "Using: $GITHUBUSER_SITES_COMMON_REMOTE. Adding remote..."
+  echo "Using: $GITHUBUSER_SITES_COMMON_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_SITES_COMMON_REMOTE/drupal7_sites_common.git"
+  REMOTE="git@github.com:$GITHUBUSER_SITES_COMMON_UPSTREAM/drupal7_sites_common.git"
 
   git remote add upstream "$REMOTE"
 
@@ -633,22 +667,22 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^y" ;then
     # Add remotes.
-    GITHUBUSER_MULTISITE_TEMPLATE_REMOTE="$GITHUBUSER_SITES_COMMON_REMOTE"
+    GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM"
     echo -v "
   *************************************************************************
 
-  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE'
+  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM'
   : "
-    read GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED
-    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED" = "x" ]; then
-      GITHUBUSER_MULTISITE_TEMPLATE_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE_ENTERED"
+    read GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED
+    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED" = "x" ]; then
+      GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
     fi
 
     cd "$BUILDPATH/drupal7_multisite_template"
 
-    echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_REMOTE. Adding remote..."
+    echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM. Adding remote..."
 
-    REMOTE="git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
+    REMOTE="git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM/drupal7_multisite_template.git"
 
     git remote add upstream $REMOTE
 
@@ -710,22 +744,22 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_MULTISITEMAKER_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE"
+  GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
   echo -v "
 *************************************************************************
 
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_REMOTE'
+What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_UPSTREAM'
 : "
-  read GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED
-  if [ ! "x$GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_MULTISITEMAKER_REMOTE="$GITHUBUSER_MULTISITEMAKER_REMOTE_ENTERED"
+  read GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED
+  if [ ! "x$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED" = "x" ]; then
+    GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
   fi
 
   cd "$BUILDPATH/greyhead_multisitemaker"
 
-  echo "Using: $GITHUBUSER_MULTISITEMAKER_REMOTE. Adding remote..."
+  echo "Using: $GITHUBUSER_MULTISITEMAKER_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
+  REMOTE="git@github.com:$GITHUBUSER_MULTISITEMAKER_UPSTREAM/greyhead_multisitemaker.git"
 
   git remote add upstream "$REMOTE"
 
@@ -785,22 +819,22 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^y" ;then
   # Add remotes.
-  GITHUBUSER_SCRIPTS_REMOTE="$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE"
+  GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
   echo -v "
 *************************************************************************
 
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_REMOTE'
+What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_UPSTREAM'
 : "
-  read GITHUBUSER_SCRIPTS_REMOTE_ENTERED
-  if [ ! "x$GITHUBUSER_SCRIPTS_REMOTE_ENTERED" = "x" ]; then
-    GITHUBUSER_SCRIPTS_REMOTE="$GITHUBUSER_SCRIPTS_REMOTE_ENTERED"
+  read GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED
+  if [ ! "x$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED" = "x" ]; then
+    GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED"
   fi
 
   cd "$BUILDPATH/scripts-of-usefulness"
 
-  echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
+  echo "Using: $GITHUBUSER_SCRIPTS_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
+  REMOTE="git@github.com:$GITHUBUSER_SCRIPTS_UPSTREAM/drupal-scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
@@ -1014,6 +1048,8 @@ What is the full clone URL of the repo? : "
 fi
 
 if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  echo "Checking out $PROJECTSCLONEURL to drupal7_sites_projects..."
+
   ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
   cd drupal7_sites_projects
 
