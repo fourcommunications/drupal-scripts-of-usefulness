@@ -86,24 +86,24 @@ fi
 
 DEPLOYDIRECTORY=""
 
-until [ -d "$DEPLOYDIRECTORY/drupal7_core" ]; do
+until [ -d "$DEPLOYDIRECTORY/core" ]; do
   echo -n "
   What is the path to the Drupal build which you want to update, either
   relative to this script, or an absolute path, without the trailing slash?
 
   e.g. '../builds/monkey' or '/Volumes/Sites/4Com/builds/monkey'
 
-  Tip: the drupal7_core directory should be at the path you enter, with
-  '/drupal7_core' on the end, e.g. '../builds/monkey/drupal7_core' or
-  '/Volumes/Sites/4Com/builds/monkey/drupal7_core'
+  Tip: the core directory should be at the path you enter, with
+  '/core' on the end, e.g. '../builds/monkey/core' or
+  '/Volumes/Sites/4Com/builds/monkey/core'
 
   :"
   read DEPLOYDIRECTORY
 
-  if [ ! -d "$DEPLOYDIRECTORY/drupal7_core" ]; then
+  if [ ! -d "$DEPLOYDIRECTORY/core" ]; then
     echo "
 
-D'oh! $DEPLOYDIRECTORY/drupal7_core doesn't exist or isn't a directory.
+D'oh! $DEPLOYDIRECTORY/core doesn't exist or isn't a directory.
 
 Please try again..."
   fi
@@ -179,7 +179,7 @@ cd "$DEPLOYDIRECTORY"
 # directory and run drush up now.
 if [ ! "x$SITEURI" = "x" ]; then
   if [ "$UPDATECORE" = 1 ] || [ "$UPDATECONTRIB" = 1 ]; then
-    cd "$DEPLOYDIRECTORY/drupal7_core/www/sites/$MULTISITENAME"
+    cd "$DEPLOYDIRECTORY/core/www/sites/$MULTISITENAME"
 
     if [ "$UPDATECORE" = 1 ]; then
       echo "Updating Drupal core..."
@@ -200,7 +200,7 @@ echo "cd-ing to deploy directory $DEPLOYDIRECTORY."
 
 # Create a list of the directories we want to test for and update, if they're
 # present.
-declare -a DIRECTORYNAMES=("drupal7_core" "drupal7_multisite_template" "drupal7_sites_common" "drupal7_common_features" "scripts-of-usefulness" "drupal7_four_features" "drupal7_sites_projects")
+declare -a DIRECTORYNAMES=("core" "multisite-template" "sites-common" "features" "scripts-of-usefulness" "four-features" "sites-projects")
 
 for DIRECTORYNAME in "${DIRECTORYNAMES[@]}"
 do

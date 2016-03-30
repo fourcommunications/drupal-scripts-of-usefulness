@@ -47,21 +47,21 @@ echo "
 ***
 Downloading the latest Drupal $DRUPALVERSION release..."
 
-cd "$BUILDPATH/drupal7_core"
+cd "$BUILDPATH/core"
 drush dl "drupal-$DRUPALVERSION" --drupal-project-rename=www -y
-cd "$BUILDPATH/drupal7_core/www"
+cd "$BUILDPATH/core/www"
 
 # ---
 
 echo "Creating the cache directory..."
 
-mkdir "$BUILDPATH/drupal7_core/www/cache"
+mkdir "$BUILDPATH/core/www/cache"
 
 # ---
 
 echo "Removing unwanted Drupal files: .gitignore, .htaccess, *.txt, sites/"
 
-cd "$BUILDPATH/drupal7_core/www"
+cd "$BUILDPATH/core/www"
 
 rm .htaccess
 rm .gitignore
@@ -70,36 +70,36 @@ rm -rf sites
 
 # ---
 
-echo "Symlinking sites to $BUILDPATH/drupal7_sites_common:"
+echo "Symlinking sites to $BUILDPATH/sites-common:"
 
-ln -s "$BUILDPATH/drupal7_sites_common" "$BUILDPATH/drupal7_core/www/sites"
+ln -s "$BUILDPATH/sites-common" "$BUILDPATH/core/www/sites"
 
 # ---
 
 echo "Symlinking profiles/greyhead to ../profiles/greyhead:"
 
-ln -s "$BUILDPATH/drupal7_core/profiles/greyhead" "$BUILDPATH/drupal7_core/www/profiles/greyhead"
+ln -s "$BUILDPATH/core/profiles/greyhead" "$BUILDPATH/core/www/profiles/greyhead"
 
 # ---
 
-HTACCESSPATH="$BUILDPATH/drupal7_multisite_template/htaccess-template"
+HTACCESSPATH="$BUILDPATH/multisite-template/htaccess-template"
 
 if [ -e "$HTACCESSPATH" ]; then
   echo "Copying htaccess from $HTACCESSPATH:"
 
-  NEWHTACCESSPATH="$BUILDPATH/drupal7_core/www/.htaccess"
+  NEWHTACCESSPATH="$BUILDPATH/core/www/.htaccess"
 
   cp "$HTACCESSPATH" "$NEWHTACCESSPATH"
 
-  HTACCESSREDIRECTSPATH="$BUILDPATH/drupal7_multisite_template/htaccess-template-redirects"
+  HTACCESSREDIRECTSPATH="$BUILDPATH/multisite-template/htaccess-template-redirects"
 
   if [ -e "$HTACCESSREDIRECTSPATH" ]; then
-    echo "Copying htaccess redirects from $HTACCESSREDIRECTSPATH into $BUILDPATH/drupal7_core/www/.htaccess:"
+    echo "Copying htaccess redirects from $HTACCESSREDIRECTSPATH into $BUILDPATH/core/www/.htaccess:"
 
     if [ -e "$HTACCESSREDIRECTSPATH" ]; then
       # Copy the redirects file first, then delete it...
-      cp "$HTACCESSREDIRECTSPATH" "$BUILDPATH/drupal7_core/www/"
-      cd "$BUILDPATH/drupal7_core/www/"
+      cp "$HTACCESSREDIRECTSPATH" "$BUILDPATH/core/www/"
+      cd "$BUILDPATH/core/www/"
       perl -pe 's/# {{REDIRECTS}}/`cat htaccess-template-redirects`/e' "$HTACCESSPATH" > "$NEWHTACCESSPATH"
       rm htaccess-template-redirects
     else

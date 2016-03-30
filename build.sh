@@ -73,7 +73,8 @@ done
 
 function removegit {
   # Recursively remove .git and .gitignore files.
-  find . | grep .git | xargs rm -rf
+  echo "Removing .git* files from $(pwd)..."
+  find . -name '.git*' | xargs rm -rf
 }
 
 function createtag {
@@ -98,7 +99,7 @@ Once this script has completed, you will have a directory structure
 similar to this (not all contents shown for brevity, and the live
 build structure won't contain all these parts):
 
-/ drupal7_core
+/ core
   / configuration
   / patches
   / privatefiles
@@ -106,24 +107,24 @@ build structure won't contain all these parts):
     / greyhead
   / www
     / (Drupal 7 - index.php, cron.php, etc)
-    / sites -> symlink to /drupal7_sites_common
-/ drupal7_sites_common
+    / sites -> symlink to /sites-common
+/ sites-common
   / all
-    / drush -> symlink to /drupal7_sites_projects/_drush_aliases
+    / drush -> symlink to /sites-projects/_drush_aliases
     / libraries
     / modules
       / contrib
       / custom
         / greyhead_* -> various greyhead modules (Git submodules)
-      / features -> optional symlink to /drupal7_common_features
-      / four-features -> optional symlink to /drupal7_four_features
+      / features -> optional symlink to /features
+      / four-features -> optional symlink to /four-features
     / themes
       / bootstrap
       / greyhead_bootstrap (Git submodule)
   / default
-  / [your multisite name] -> optional symlink to /drupal7_sites_projects/[your multisite name]
+  / [your multisite name] -> optional symlink to /sites-projects/[your multisite name]
   . sites.php
-/ drupal7_sites_projects
+/ sites-projects
   / _drush_aliases
   / [your multisite name]
     / modules
@@ -134,39 +135,39 @@ build structure won't contain all these parts):
     / files -> symlink to the project's files directory
     . settings.php
     . settings.site_urls.php
-/ drupal7_multisite_template
-/ greyhead_multisitemaker
+/ multisite-template
+/ multisite-maker
 . local_databases.php (your database settings file)
 . local_settings.php
 
 *************************************************************************
 
-Note: your webroot should point to /drupal7_core/www
+Note: your webroot should point to /core/www
 
 *************************************************************************
 
 These directories will contain the following Git repositories:
 
-drupal7_core: this contains a copy of the latest release of Drupal 7, and the
+core: this contains a copy of the latest release of Drupal 7, and the
 code which configures the Drupal site for your local installation such as
 setting development variables, etc.
 
-drupal7_sites_common: this provides the Drupal /sites/all and /sites/default
+sites-common: this provides the Drupal /sites/all and /sites/default
 directories, /sites/sites.php and a couple of other common files. This repo
-will be symlinked into drupal7_core/www/sites
+will be symlinked into core/www/sites
 
-drupal7_multisite_template: provides a multisite directory to create a new
+multisite-template: provides a multisite directory to create a new
 multisite in the codebase.
 
 A choice of two Features repos:
 
 Either: alexharries/drupal7_common_features, at
-drupal7_core/www/sites/all/modules/features
+core/www/sites/all/modules/features
 
 Or: (Four Communications only) drupal7_four_features, at
-drupal7_core/www/sites/all/modules/four-features
+core/www/sites/all/modules/four-features
 
-drupal7_sites_projects: the directory where your individual multisite projects
+sites-projects: the directory where your individual multisite projects
 are kept. This will either be a checkout from a repo URL you specify,
 one of two pre-configured Github repos (as long as you have access to clone
 them), or a freshly-created directory which you will need to save, e.g. by
@@ -174,13 +175,13 @@ creating a git repository for.
 
 This will contain the multisite directory with code (modules, themes, etc)
 specifically for this Drupal website build. Individual projects' directories
-are then symlinked into the drupal7_core/www/sites/ directory.
+are then symlinked into the core/www/sites/ directory.
 
-greyhead_multisitemaker: Multisite Maker is a quick 'n dirty way for you to
+multisite-maker: Multisite Maker is a quick 'n dirty way for you to
 let non-technical Drupal users self-serve by setting up their own throwaway
 Drupal instances. To enable, create a symlink from the www directory to the
 multisitemaker directory; see
-https://github.com/fourcommunications/greyhead_multisitemaker for full
+https://github.com/fourcommunications/multisite-maker for full
 destructions.
 
 *************************************************************************
@@ -259,10 +260,12 @@ fi
 # Set a depth modifier. We also use this to recursively remove the git
 # directories.
 GITCLONECOMMAND="git clone"
+REMOVEGIT="no"
 
 # Determine the branches to use for projects. If we've been asked to build from
 # a particular tag, then we will attempt to check each project out at that tag.
 if [ ! "x$BUILDFROMTAG" = "x" ]; then
+  REMOVEGIT="yes"
   PROJECTSBRANCH="$BUILDFROMTAG"
   GITCLONECOMMAND="$GITCLONECOMMAND --depth 1"
   BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
@@ -413,7 +416,7 @@ echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
   FILESPATHDEFAULT="$BUILDPATH/../../files/$BUILDPATH_BUILDTYPE/$MULTISITENAME"
-  if [ -d "$FILESPATH" ]; then
+  if [ ! -d "$FILESPATH" ]; then
     until [ -d "$FILESPATH" ]; do
       echo -n "
     *************************************************************************
@@ -442,7 +445,6 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
       fi
     done
   fi
-
 fi
 
 # ---
@@ -466,13 +468,13 @@ fi
 
 echo "Using: $GITHUBUSER_CORE
 
-Cloning Drupal core from $GITHUBUSER_CORE..."
+Cloning Drupal core branch $PROJECTSBRANCH from $GITHUBUSER_CORE into $BUILDPATH/core ..."
 
 cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
-cd "drupal7_core"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" core
+cd "core"
 
-if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+if [ "x$REMOVEGIT" = "yes" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -523,7 +525,7 @@ Leave blank to use the default: '$GITHUBUSER_CORE_UPSTREAM'
     fi
   fi
 
-  cd "$BUILDPATH/drupal7_core"
+  cd "$BUILDPATH/core"
 
   echo "Using: $GITHUBUSER_CORE_UPSTREAM. Adding remote..."
 
@@ -554,13 +556,13 @@ if [ ! "x$GITHUBUSER_SITES_COMMON_ENTERED" = "x" ]; then
 fi
 echo "Using: $GITHUBUSER_SITES_COMMON
 
-Cloning Drupal sites common from $GITHUBUSER_SITES_COMMON..."
+Cloning Drupal sites common branch $PROJECTSBRANCH from $GITHUBUSER_SITES_COMMON into $BUILDPATH/sites-common ..."
 
 cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
-cd "drupal7_sites_common"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" sites-common
+cd "sites-common"
 
-if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+if [ "x$REMOVEGIT" = "yes" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -597,7 +599,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
     GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
   fi
 
-  cd "$BUILDPATH/drupal7_sites_common"
+  cd "$BUILDPATH/sites-common"
 
   echo "Using: $GITHUBUSER_SITES_COMMON_UPSTREAM. Adding remote..."
 
@@ -635,13 +637,13 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
   fi
   echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
 
-  Cloning Drupal multisite template from $GITHUBUSER_MULTISITE_TEMPLATE..."
+Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITE_TEMPLATE into $BUILDPATH/multisite-template ..."
 
   cd "$BUILDPATH"
-  ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
-  cd "drupal7_multisite_template"
+  ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" multisite-template
+  cd "multisite-template"
 
-  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+  if [ "x$REMOVEGIT" = "yes" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -678,7 +680,7 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
       GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
     fi
 
-    cd "$BUILDPATH/drupal7_multisite_template"
+    cd "$BUILDPATH/multisite-template"
 
     echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM. Adding remote..."
 
@@ -712,13 +714,13 @@ if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
 fi
 echo "Using: $GITHUBUSER_MULTISITEMAKER
 
-Cloning Drupal multisite template from $GITHUBUSER_MULTISITEMAKER..."
+Cloning Drupal multisite maker branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITEMAKER into $BUILDPATH/multisite-maker ..."
 
 cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
-cd "greyhead_multisitemaker"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" multisite-maker
+cd "multisite-maker"
 
-if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+if [ "x$REMOVEGIT" = "yes" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -755,7 +757,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
     GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
   fi
 
-  cd "$BUILDPATH/greyhead_multisitemaker"
+  cd "$BUILDPATH/multisite-maker"
 
   echo "Using: $GITHUBUSER_MULTISITEMAKER_UPSTREAM. Adding remote..."
 
@@ -787,13 +789,13 @@ if [ ! "x$GITHUBUSER_SCRIPTS_ENTERED" = "x" ]; then
 fi
 echo "Using: $GITHUBUSER_SCRIPTS
 
-Cloning Drupal multisite template from $GITHUBUSER_SCRIPTS..."
+Cloning scripts of usefulness branch $PROJECTSBRANCH from $GITHUBUSER_SCRIPTS into $BUILDPATH/scripts-of-usefulness ..."
 
 cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
 cd "scripts-of-usefulness"
 
-if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+if [ "x$REMOVEGIT" = "yes" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -857,7 +859,7 @@ echo -n "
 
 Which Features repo do you want to clone, if any?
 
-1. fourcommunications/drupal7_common_features (restricted access)
+1. fourcommunications/drupal7_four_features (restricted access)
 2. alexharries/drupal7_common_features (restricted access)
 3. Another git repository and branch of your choosing
 4. No Features checkout.
@@ -881,7 +883,7 @@ elif echo "$answer" | grep -iq "^4" ;then
 fi
 
 if [ "$FEATURESCHECKOUT" = "four" ]; then
-  FEATURESCLONEURL="git@github.com:fourcommunications/drupal7_common_features.git"
+  FEATURESCLONEURL="git@github.com:fourcommunications/drupal7_four_features.git"
 fi
 
 if [ "$FEATURESCHECKOUT" = "alexharries" ]; then
@@ -900,7 +902,7 @@ if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] |
 What branch should be checked out? (Leave blank for default '$CUSTOMFEATURESBRANCH_DEFAULT') : "
   read CUSTOMFEATURESBRANCH
 
-  if [ "x$CUSTOMFEATURESBRANCH" = "X" ]; then
+  if [ "x$CUSTOMFEATURESBRANCH" = "x" ]; then
     CUSTOMFEATURESBRANCH="$CUSTOMFEATURESBRANCH_DEFAULT"
   fi
 
@@ -913,17 +915,17 @@ if [ "$FEATURESCHECKOUT" = "custom" ]; then
 What is the full clone URL of the repo? : "
   read FEATURESCLONEURL
 
-  if [ "x$FEATURESCLONEURL" = "X" ]; then
+  if [ "x$FEATURESCLONEURL" = "x" ]; then
     echo "No URL entered - cancelling and will create an empty dir instead."
     FEATURESCHECKOUT=4
   fi
 fi
 
 if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
-  ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" drupal7_common_features
-  cd drupal7_common_features
+  ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" features
+  cd features
 
-  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+  if [ "x$REMOVEGIT" = "yes" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -945,15 +947,15 @@ fi
 #stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 #if echo "$answer" | grep -iq "^y" ;then
 #  cd "$BUILDPATH"
-#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:alexharries/drupal7_common_features.git drupal7_common_features
+#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:alexharries/drupal7_common_features.git features
 #
 #  echo "
 #
 #  ---
 #
-#  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_common_features:"
+#  Symlinking sites/all/modules/features to $BUILDPATH/features:"
 #
-#  ln -s "$BUILDPATH/drupal7_common_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/features"
+#  ln -s "$BUILDPATH/features" "$BUILDPATH/core/www/sites/all/modules/features"
 #fi
 #
 #echo -n "
@@ -965,18 +967,18 @@ fi
 #stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 #if echo "$answer" | grep -iq "^y" ;then
 #  cd "$BUILDPATH"
-#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:fourcommunications/drupal7_four_features.git drupal7_four_features
+#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:fourcommunications/drupal7_four_features.git four-features
 #
 #  echo "
 #
 #  ---
 #
-#  Symlinking sites/all/modules/features to $BUILDPATH/drupal7_four_features:"
+#  Symlinking sites/all/modules/features to $BUILDPATH/four-features:"
 #
-#  ln -s "$BUILDPATH/drupal7_four_features" "$BUILDPATH/drupal7_core/www/sites/all/modules/four-features"
+#  ln -s "$BUILDPATH/four-features" "$BUILDPATH/core/www/sites/all/modules/four-features"
 #fi
 
-# drupal7_sites_projects
+# sites-projects
 
 cd "$BUILDPATH"
 echo -n "
@@ -1021,19 +1023,6 @@ if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; 
   CUSTOMPROJECTSBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  echo -n "
-*************************************************************************
-
-What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRANCH_DEFAULT') : "
-  read CUSTOMPROJECTSBRANCH
-
-  if [ "x$CUSTOMPROJECTSBRANCH" = "X" ]; then
-    CUSTOMPROJECTSBRANCH="$CUSTOMPROJECTSBRANCH_DEFAULT"
-  fi
-
-fi
-
 if [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo -n "
 *************************************************************************
@@ -1041,19 +1030,31 @@ if [ "$PROJECTSCHECKOUT" = "custom" ]; then
 What is the full clone URL of the repo? : "
   read PROJECTSCLONEURL
 
-  if [ "x$PROJECTSCLONEURL" = "X" ]; then
+  if [ "x$PROJECTSCLONEURL" = "x" ]; then
     echo "No URL entered - cancelling and will create an empty dir instead."
     PROJECTSCHECKOUT=4
   fi
 fi
 
 if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  echo "Checking out $PROJECTSCLONEURL to drupal7_sites_projects..."
+  echo -n "
+*************************************************************************
 
-  ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
-  cd drupal7_sites_projects
+What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRANCH_DEFAULT') : "
+  read CUSTOMPROJECTSBRANCH
 
-  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
+  if [ "x$CUSTOMPROJECTSBRANCH" = "x" ]; then
+    CUSTOMPROJECTSBRANCH="$CUSTOMPROJECTSBRANCH_DEFAULT"
+  fi
+fi
+
+if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  echo "Checking out $PROJECTSCLONEURL to sites-projects..."
+
+  ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
+  cd sites-projects
+
+  if [ "x$REMOVEGIT" = "yes" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -1066,18 +1067,18 @@ if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] |
 fi
 
 if [ "$PROJECTSCHECKOUT" = "create" ]; then
-  mkdir -p "$BUILDPATH/drupal7_sites_projects"
+  mkdir -p "$BUILDPATH/sites-projects"
 fi
 
-if [ -d "$BUILDPATH/drupal7_sites_projects" ]; then
+if [ -d "$BUILDPATH/sites-projects" ]; then
   # If Drupal core and drupal7_sites_common were checked out ok, and we have
   # a multisite name, symlink the project dir and drush aliases in now.
   if [ ! "x$MULTISITENAME" = "x" ]; then
     # Symlink the multisite directory from sites/ to its physical location.
-    MULTISITEPHYSICALLOCATION="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
-    MULTISITESYMLINKLOCATION="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+    MULTISITEPHYSICALLOCATION="$BUILDPATH/sites-projects/$MULTISITENAME"
+    MULTISITESYMLINKLOCATION="$BUILDPATH/core/www/sites/$MULTISITENAME"
 
-    if [[ ! -d "$MULTISITEPHYSICALLOCATION" && -d "$BUILDPATH/drupal7_multisite_template" ]]; then
+    if [[ ! -d "$MULTISITEPHYSICALLOCATION" && -d "$BUILDPATH/multisite-template" ]]; then
       echo -p "
 *************************************************************************
 
@@ -1088,10 +1089,10 @@ Multisite directory $MULTISITEPHYSICALLOCATION not found. Do you want to create 
       if echo "$answer" | grep -iq "^y" ;then
         # Copy the sites template and comment out the URL template in
         # settings.site_urls.info.
-        cp -R "$BUILDPATH/drupal7_multisite_template/sites-template" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS"
-        perl -pi -e "s/SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/; SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/g" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/settings.site_urls.info"
+        cp -R "$BUILDPATH/multisite-template/sites-template" "$BUILDPATH/sites-projects/$MULTISITENAMENOHYPHENS"
+        perl -pi -e "s/SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/; SETTINGS_SITE_URLS\[\] = {{DOMAIN}}/g" "$BUILDPATH/sites-projects/$MULTISITENAMENOHYPHENS/settings.site_urls.info"
 
-        MULTISITETHEMEPATH="$BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes"
+        MULTISITETHEMEPATH="$BUILDPATH/sites-projects/$MULTISITENAMENOHYPHENS/themes"
         MULTISITETHEMETEMPLATEPATH="$MULTISITETHEMEPATH/username_bootstrap_subtheme"
 
         echo -n "
@@ -1108,7 +1109,7 @@ Y/n: "
         if echo "$answer" | grep -iq "^y" ;then
           # Create the Bootstrap sub-subtheme.
 
-          echo "Creating the subtheme ${MULTISITENAMENOHYPHENS}_bootstrap_subtheme at $BUILDPATH/drupal7_sites_projects/$MULTISITENAMENOHYPHENS/themes:"
+          echo "Creating the subtheme ${MULTISITENAMENOHYPHENS}_bootstrap_subtheme at $BUILDPATH/sites-projects/$MULTISITENAMENOHYPHENS/themes:"
 
           cd "$MULTISITETHEMEPATH"
           mv username_bootstrap_subtheme "$MULTISITENAMENOHYPHENS"_bootstrap_subtheme
@@ -1145,12 +1146,12 @@ Y/n: "
     ln -s "$MULTISITEPHYSICALLOCATION" "$MULTISITESYMLINKLOCATION"
 
     DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
-    DRUSHALIASESDIRECTORY="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
+    DRUSHALIASESDIRECTORY="$BUILDPATH/sites-projects/_drush_aliases"
     DRUSHALIASPHYSICALLOCATION="$DRUSHALIASESDIRECTORY/$DRUSHALIASNAME"
 
-    # If the alias doesn't exist but the drupal7_sites_projects repo does,
+    # If the alias doesn't exist but the sites-projects dir does,
     # we can attempt to create it.
-    if [[ ! -f "$DRUSHALIASPHYSICALLOCATION" && -d "$BUILDPATH/drupal7_sites_projects" ]]; then
+    if [[ ! -f "$DRUSHALIASPHYSICALLOCATION" && -d "$BUILDPATH/sites-projects" ]]; then
       echo -n "
 *************************************************************************
 
@@ -1164,7 +1165,7 @@ Do you want to create the Drush alias file $DRUSHALIASPHYSICALLOCATION? Y/n: "
           mkdir -p "$DRUSHALIASESDIRECTORY"
         fi
 
-        cp "$BUILDPATH/drupal7_multisite_template/template.aliases.drushrc.php" "$DRUSHALIASPHYSICALLOCATION"
+        cp "$BUILDPATH/multisite-template/template.aliases.drushrc.php" "$DRUSHALIASPHYSICALLOCATION"
       fi
     fi
 
@@ -1255,22 +1256,22 @@ Leave blank for the default '$MULTISITENAMENOHYPHENS': "
 #      echo "
 #*************************************************************************
 #
-#Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME:"
+#Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME:"
 #
-#      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
-#        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
+#      if [ -d "$BUILDPATH/core/www/sites/all/drush" ]; then
+#        mkdir "$BUILDPATH/core/www/sites/all/drush"
 #      fi
 #
-#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
+#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME"
     fi
 
     if [ ! "x$SITEURI" = "x" ]; then
       echo "
 *************************************************************************
 
-Creating the settings.this_site_url.info file at $BUILDPATH/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
+Creating the settings.this_site_url.info file at $BUILDPATH/sites-projects/$MULTISITENAME/settings.this_site_url.info"
 
-      echo "SETTINGS_SITE_URLS[] = $SITEURI" > "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/settings.this_site_url.info"
+      echo "SETTINGS_SITE_URLS[] = $SITEURI" > "$BUILDPATH/sites-projects/$MULTISITENAME/settings.this_site_url.info"
 
       echo "
 
@@ -1287,10 +1288,10 @@ echo "
 
 ";
 
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]]; then
+if [[ -d "$BUILDPATH/core/www" && -d "$BUILDPATH/sites-common" ]]; then
   # Symlink common first.
-  COMMONSITESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites"
-  COMMONSITESPHYSICALPATH="$BUILDPATH/drupal7_sites_common"
+  COMMONSITESSYMLINKPATH="$BUILDPATH/core/www/sites"
+  COMMONSITESPHYSICALPATH="$BUILDPATH/sites-common"
   if [ -e "$COMMONSITESSYMLINKPATH" ]; then
     rm "$COMMONSITESSYMLINKPATH"
   fi
@@ -1299,8 +1300,8 @@ if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]
   ln -s "$COMMONSITESPHYSICALPATH" "$COMMONSITESSYMLINKPATH"
 
   # Symlink drush aliases.
-  DRUSHALIASESSYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/all/drush"
-  DRUSHALIASESPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/_drush_aliases"
+  DRUSHALIASESSYMLINKPATH="$BUILDPATH/core/www/sites/all/drush"
+  DRUSHALIASESPHYSICALPATH="$BUILDPATH/sites-projects/_drush_aliases"
   if [ -e "$DRUSHALIASESSYMLINKPATH" ]; then
     rm
   fi
@@ -1310,17 +1311,17 @@ if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/drupal7_sites_common" ]
 fi
 
 # Symlink the multisite itself.
-MULTISITESYMLINKPATH="$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
-MULTISITEPHYSICALPATH="$BUILDPATH/drupal7_sites_projects/$MULTISITENAME"
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$MULTISITEPHYSICALPATH" && ! -e "$MULTISITESYMLINKPATH" ]]; then
+MULTISITESYMLINKPATH="$BUILDPATH/core/www/sites/$MULTISITENAME"
+MULTISITEPHYSICALPATH="$BUILDPATH/sites-projects/$MULTISITENAME"
+if [[ -d "$BUILDPATH/core/www" && -d "$MULTISITEPHYSICALPATH" && ! -e "$MULTISITESYMLINKPATH" ]]; then
   echo "Linking $MULTISITESYMLINKPATH to $MULTISITEPHYSICALPATH:"
   ln -s "$MULTISITEPHYSICALPATH" "$MULTISITESYMLINKPATH"
 fi
 
-if [[ -d "$BUILDPATH/drupal7_core/www" && -d "$BUILDPATH/greyhead_multisitemaker" ]]; then
+if [[ -d "$BUILDPATH/core/www" && -d "$BUILDPATH/multisite-maker" ]]; then
   # Symlink multisitemaker.
-  MULTISITEMAKERSYMLINKPATH="$BUILDPATH/drupal7_core/www/multisitemaker"
-  MULTISITEMAKERPHYSICALPATH="$BUILDPATH/greyhead_multisitemaker"
+  MULTISITEMAKERSYMLINKPATH="$BUILDPATH/core/www/multisitemaker"
+  MULTISITEMAKERPHYSICALPATH="$BUILDPATH/multisite-maker"
   if [ -e "$MULTISITEMAKERSYMLINKPATH" ]; then
     rm "$MULTISITEMAKERSYMLINKPATH"
   fi
@@ -1331,13 +1332,13 @@ fi
 
 # Only symlink to files if we're not building for live, if the multisite dir
 # is set up, and there isn't already a files link/directory.
-if [[ ! "$BUILDTYPE" = "LIVE" && -d "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME" && ! -e "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files" ]]; then
+if [[ ! "$BUILDTYPE" = "LIVE" && -d "$BUILDPATH/sites-projects/$MULTISITENAME" && ! -e "$BUILDPATH/sites-projects/$MULTISITENAME/files" ]]; then
   echo "
 *************************************************************************
 
-Symlinking $BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files to $FILESPATH: "
+Symlinking $BUILDPATH/sites-projects/$MULTISITENAME/files to $FILESPATH: "
 
-  ln -s "$FILESPATH" "$BUILDPATH/drupal7_sites_projects/$MULTISITENAME/files"
+  ln -s "$FILESPATH" "$BUILDPATH/sites-projects/$MULTISITENAME/files"
 fi
 
 # ---
@@ -1402,40 +1403,40 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
     done
 
     # Symlink local_settings and local_databases.
-    ln -s ${EXISTING_LOCALDATABASESPATH} "$BUILDPATH/drupal7_core/local_databases.php"
-    ln -s ${EXISTING_LOCALSETTINGSPATH} "$BUILDPATH/drupal7_core/local_settings.php"
+    ln -s ${EXISTING_LOCALDATABASESPATH} "$BUILDPATH/core/local_databases.php"
+    ln -s ${EXISTING_LOCALSETTINGSPATH} "$BUILDPATH/core/local_settings.php"
 
 #    # Is there a Drush alias?
 #    if [ -f "$DRUSHALIASPHYSICALLOCATION" ]; then
 #      echo "
 #  *************************************************************************
 #
-#  Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME: "
+#  Symlinking $DRUSHALIASPHYSICALLOCATION to $BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME: "
 #
-#      if [ -d "$BUILDPATH/drupal7_core/www/sites/all/drush" ]; then
-#        mkdir "$BUILDPATH/drupal7_core/www/sites/all/drush"
+#      if [ -d "$BUILDPATH/core/www/sites/all/drush" ]; then
+#        mkdir "$BUILDPATH/core/www/sites/all/drush"
 #      fi
 #
-#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/drupal7_core/www/sites/all/drush/$DRUSHALIASNAME"
+#      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME"
 #    fi
 
   else
     # No.
-    LOCALDATABASESPATH="$BUILDPATH/drupal7_core/local_databases.php"
+    LOCALDATABASESPATH="$BUILDPATH/core/local_databases.php"
 
     echo "
   *************************************************************************
 
-  Copying local_databases.php and local_settings.php to $BUILDPATH/drupal7_core.
+  Copying local_databases.php and local_settings.php to $BUILDPATH/core.
 
   You will be asked for the database connection details shortly; if you don't
   want to or can't set them up now, you will need to edit the file at
   $LOCALDATABASESPATH to set them."
 
-    cp "$BUILDPATH/drupal7_multisite_template/local_databases.template.php" "$LOCALDATABASESPATH"
+    cp "$BUILDPATH/multisite-template/local_databases.template.php" "$LOCALDATABASESPATH"
 
-    LOCALSETTINGSFILEPATH="$BUILDPATH/drupal7_core/local_settings.php"
-    cp "$BUILDPATH/drupal7_multisite_template/local_settings.template.php" "$LOCALSETTINGSFILEPATH"
+    LOCALSETTINGSFILEPATH="$BUILDPATH/core/local_settings.php"
+    cp "$BUILDPATH/multisite-template/local_settings.template.php" "$LOCALSETTINGSFILEPATH"
 
   fi
 
@@ -1536,7 +1537,7 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
       CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
 
-      cd "$BUILDPATH/drupal7_core"
+      cd "$BUILDPATH/core"
       echo ${CONNECTIONSTRING} > local_databases.tmp
 
       sed -e '/BUILDSHINSERT}}/r./local_databases.tmp' local_databases.php > local_databases_2.php
@@ -1602,7 +1603,7 @@ What is the absolute path to the database dump file, including the filename? (Le
       if echo "$answer" | grep -iq "^y" ;then
         echo "Testing database..."
 
-        cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+        cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
         drush rr --fire-bazooka
         drush cc all
         drush status
@@ -1649,7 +1650,7 @@ Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leav
       FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
 
       # Do they want to enable four_communications_base_modules?
-      if [ -d "$BUILDPATH/drupal7_four_features" ]; then
+      if [ -d "$BUILDPATH/four-features" ]; then
         # Actually, just do it :)
 
 #        echo -n "
@@ -1666,7 +1667,7 @@ Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leav
         FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules fourcomms_update_notifications four_communications_user_roles four_login_toboggan_settings"
 
       # Otherwise, do they want to enable common_base_modules?
-      elif [ -d "$BUILDPATH/drupal7_common_features/common_base_modules" ]; then
+      elif [ -d "$BUILDPATH/features/common_base_modules" ]; then
         # Just do it.
 
 #        echo -n "
@@ -1688,7 +1689,7 @@ Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leav
 
 Beginning install..."
 
-      cd "$BUILDPATH/drupal7_core/www/sites/$MULTISITENAME"
+      cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
 
       drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
 
@@ -1729,7 +1730,7 @@ You can now browse your site at $PROTOCOL://$SITEURI - yay!"
 
 This script can't set up the database because no multisite directory name has been entered.
 
-Please manually edit $BUILDPATH/drupal7_core/local_databases.php to set
+Please manually edit $BUILDPATH/core/local_databases.php to set
 the database details."
   fi
 fi
@@ -1741,29 +1742,29 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #  to be moved, if it exists.
 #
 #  /
-#    drupal7_core
+#    core
 #      www
-#        sites -> /drupal7_sites_common
-#  . drupal7_common_features*
-#  . drupal7_four_features*
-#  . drupal7_sites_common
-#      [MULTISITENAME]* -> /drupal7_sites_projects/[MULTISITENAME]
+#        sites -> /sites-common
+#  . features*
+#  . four-features*
+#  . sites-common
+#      [MULTISITENAME]* -> /sites-projects/[MULTISITENAME]
 #      all
 #        libraries
 #        modules
 #          contrib
 #          custom
-#          features* -> /drupal7_common_features
-#          four-features* -> /drupal7_four_features
+#          features* -> /features
+#          four-features* -> /four-features
 #        themes
 #      sites.php
-#    drupal7_sites_projects*
+#    sites-projects*
 #    . [MULTISITENAME]
 #
 #  This is the directory structure we want:
 #
 #  /
-#    drupal7_core
+#    core
 #      www
 #        sites
 #          [MULTISITENAME]*
@@ -1779,56 +1780,56 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #
 #  Therefore, directories to be moved, if they exist:
 #
-#  . drupal7_sites_common (must go first)
-#  . drupal7_common_features*
-#  . drupal7_four_features*
+#  . sites-common (must go first)
+#  . features*
+#  . four-features*
 #  . [MULTISITENAME]
 
   cd "$BUILDPATH"
 
-  # If drupal7_sites_common is present.
-  if [ -d "drupal7_sites_common" ]; then
-    # If drupal7_core/www/sites exists.
-    if [ -e "drupal7_core/www/sites" ]; then
-      rm drupal7_core/www/sites
+  # If sites-common is present.
+  if [ -d "sites-common" ]; then
+    # If core/www/sites exists.
+    if [ -e "core/www/sites" ]; then
+      rm core/www/sites
     fi
 
-    # Move drupal7_sites_common to drupal7_core/www/sites.
-    mv drupal7_sites_common drupal7_core/www/sites
+    # Move sites-common to core/www/sites.
+    mv sites-common core/www/sites
   fi
 
-  # If drupal7_common_features is present.
-  if [ -d "drupal7_common_features" ]; then
-    # If drupal7_core/www/sites/all/features exists.
-    if [ -e "drupal7_core/www/sites/all/features" ]; then
-      rm drupal7_core/www/sites/all/features
+  # If features is present.
+  if [ -d "features" ]; then
+    # If core/www/sites/all/features exists.
+    if [ -e "core/www/sites/all/features" ]; then
+      rm core/www/sites/all/features
     fi
 
-    # Move drupal7_common_features to drupal7_core/www/sites/all/features.
-    mv drupal7_common_features drupal7_core/www/sites/all/features
+    # Move features to core/www/sites/all/features.
+    mv features core/www/sites/all/features
   fi
 
-  # If drupal7_four_features is present.
-  if [ -d "drupal7_four_features" ]; then
-    # If drupal7_core/www/sites/all/four-features exists.
-    if [ -e "drupal7_core/www/sites/all/four-features" ]; then
-      rm drupal7_core/www/sites/all/four-features
+  # If four-features is present.
+  if [ -d "four-features" ]; then
+    # If core/www/sites/all/four-features exists.
+    if [ -e "core/www/sites/all/four-features" ]; then
+      rm core/www/sites/all/four-features
     fi
 
-    # Move drupal7_four_features to drupal7_core/www/sites/all/four-features.
-    mv drupal7_four_features drupal7_core/www/sites/all/four-features
+    # Move four-features to core/www/sites/all/four-features.
+    mv four-features core/www/sites/all/four-features
   fi
 
-  # If drupal7_sites_projects/$MULTISITENAME is present.
-  if [ -d "drupal7_sites_projects/$MULTISITENAME" ]; then
-    # If drupal7_core/www/sites/$MULTISITENAME exists.
-    if [ -e "drupal7_core/www/sites/$MULTISITENAME" ]; then
-      rm "drupal7_core/www/sites/$MULTISITENAME"
+  # If sites-projects/$MULTISITENAME is present.
+  if [ -d "sites-projects/$MULTISITENAME" ]; then
+    # If core/www/sites/$MULTISITENAME exists.
+    if [ -e "core/www/sites/$MULTISITENAME" ]; then
+      rm "core/www/sites/$MULTISITENAME"
     fi
 
-    # Move drupal7_sites_projects/$MULTISITENAME to
-    # drupal7_core/www/sites/$MULTISITENAME.
-    mv "drupal7_sites_projects/$MULTISITENAME" "drupal7_core/www/sites/$MULTISITENAME"
+    # Move sites-projects/$MULTISITENAME to
+    # core/www/sites/$MULTISITENAME.
+    mv "sites-projects/$MULTISITENAME" "core/www/sites/$MULTISITENAME"
   fi
 
   # Now create the tar.gz. Change to the parent dir of the build directory.
