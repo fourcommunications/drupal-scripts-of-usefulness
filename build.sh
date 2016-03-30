@@ -241,13 +241,13 @@ fi
 
 # Set a depth modifier. We also use this to recursively remove the git
 # directories.
-GITDEPTH=""
+GITCLONECOMMAND="git clone"
 
 # Determine the branches to use for projects. If we've been asked to build from
 # a particular tag, then we will attempt to check each project out at that tag.
 if [ ! "x$BUILDFROMTAG" = "x" ]; then
   PROJECTSBRANCH="$BUILDFROMTAG"
-  GITDEPTH="--depth 1"
+  GITCLONECOMMAND="$GITCLONECOMMAND --depth 1"
   BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
 elif [[ "$BUILDTYPE" = "LOCAL" || "$BUILDTYPE" = "DEV" ]]; then
   PROJECTSBRANCH="develop"
@@ -354,11 +354,13 @@ Leave blank to use the default: '$BUILDPATH_DEFAULT'
 
   if [ -d "$BUILDPATH" ]; then
     echo "
-  ***************************************************************
-  WARNING:
-  Directory '$BUILDPATH' already exists; please remove it and try again.
-  ***************************************************************
+***************************************************************
+WARNING:
+Directory '$BUILDPATH' already exists; moving it to
+$BUILDPATH-old
+***************************************************************
   "
+    mv "$BUILDPATH" "$BUILDPATH-old"
   fi
 done
 
@@ -391,7 +393,7 @@ echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 # Only request files path if this isn't a live build.
 if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
-  FILESPATHDEFAULT="$BUILDPATH/../../files/$MULTISITENAME"
+  FILESPATHDEFAULT="$BUILDPATH/../../files/$BUILDPATH_BUILDTYPE/$MULTISITENAME"
   until [ -d "$FILESPATH" ]; do
     echo -n "
   *************************************************************************
@@ -444,10 +446,10 @@ echo "Using: $GITHUBUSER_CORE
 Cloning Drupal core from $GITHUBUSER_CORE..."
 
 cd "$BUILDPATH"
-git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" drupal7_core
 cd "drupal7_core"
 
-if [ ! "x$GITDEPTH" = "x" ]; then
+if [ ! "x$GITCLONECOMMAND" = "x" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -459,12 +461,6 @@ if [ ! "x$CREATETAG" = "x" ]; then
 fi
 
 # ---
-
-exit monkey
-going back up to not ask for build type if one provided
-then need to come back down to checkout shallow depth = 1 and rm the git directories if LIVE build, followed by moving the files and creating the tar.gz when done.
-also need to set/fix the directory and archive names for live builds
-
 
 echo -n "
 *************************************************************************
@@ -496,7 +492,7 @@ Leave blank to use the default: '$GITHUBUSER_CORE_REMOTE'
 
   echo "Using: $GITHUBUSER_CORE_REMOTE. Adding remote..."
 
-  REMOTE="git@github.com/$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
+  REMOTE="git@github.com:$GITHUBUSER_CORE_REMOTE/drupal7_core.git"
 
   git remote add upstream ${REMOTE}
 
@@ -527,10 +523,10 @@ echo "Using: $GITHUBUSER_SITES_COMMON
 Cloning Drupal sites common from $GITHUBUSER_SITES_COMMON..."
 
 cd "$BUILDPATH"
-git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" drupal7_sites_common
 cd "drupal7_sites_common"
 
-if [ ! "x$GITDEPTH" = "x" ]; then
+if [ ! "x$GITCLONECOMMAND" = "x" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -571,7 +567,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_SITES_COMMON_REMOTE. Adding remote..."
 
-  REMOTE="git@github.com/$GITHUBUSER_SITES_COMMON_REMOTE/drupal7_sites_common.git"
+  REMOTE="git@github.com:$GITHUBUSER_SITES_COMMON_REMOTE/drupal7_sites_common.git"
 
   git remote add upstream "$REMOTE"
 
@@ -608,10 +604,10 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
   Cloning Drupal multisite template from $GITHUBUSER_MULTISITE_TEMPLATE..."
 
   cd "$BUILDPATH"
-  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
+  ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" drupal7_multisite_template
   cd "drupal7_multisite_template"
 
-  if [ ! "x$GITDEPTH" = "x" ]; then
+  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -652,7 +648,7 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
 
     echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_REMOTE. Adding remote..."
 
-    REMOTE="git@github.com/$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
+    REMOTE="git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE_REMOTE/drupal7_multisite_template.git"
 
     git remote add upstream $REMOTE
 
@@ -685,10 +681,10 @@ echo "Using: $GITHUBUSER_MULTISITEMAKER
 Cloning Drupal multisite template from $GITHUBUSER_MULTISITEMAKER..."
 
 cd "$BUILDPATH"
-git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" greyhead_multisitemaker
 cd "greyhead_multisitemaker"
 
-if [ ! "x$GITDEPTH" = "x" ]; then
+if [ ! "x$GITCLONECOMMAND" = "x" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -729,7 +725,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_MULTISITEMAKER_REMOTE. Adding remote..."
 
-  REMOTE="git@github.com/$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
+  REMOTE="git@github.com:$GITHUBUSER_MULTISITEMAKER_REMOTE/greyhead_multisitemaker.git"
 
   git remote add upstream "$REMOTE"
 
@@ -760,10 +756,10 @@ echo "Using: $GITHUBUSER_SCRIPTS
 Cloning Drupal multisite template from $GITHUBUSER_SCRIPTS..."
 
 cd "$BUILDPATH"
-git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive "git@github.com/$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
 cd "scripts-of-usefulness"
 
-if [ ! "x$GITDEPTH" = "x" ]; then
+if [ ! "x$GITCLONECOMMAND" = "x" ]; then
   removegit
 else
   # Ignore file permission changes.
@@ -804,7 +800,7 @@ What is the upstream Github account to pull changes from? Leave blank to use the
 
   echo "Using: $GITHUBUSER_SCRIPTS_REMOTE. Adding remote..."
 
-  REMOTE="git@github.com/$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
+  REMOTE="git@github.com:$GITHUBUSER_SCRIPTS_REMOTE/drupal-scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
@@ -851,11 +847,11 @@ elif echo "$answer" | grep -iq "^4" ;then
 fi
 
 if [ "$FEATURESCHECKOUT" = "four" ]; then
-  FEATURESCLONEURL="git@github.com/fourcommunications/drupal7_common_features.git"
+  FEATURESCLONEURL="git@github.com:fourcommunications/drupal7_common_features.git"
 fi
 
 if [ "$FEATURESCHECKOUT" = "alexharries" ]; then
-  FEATURESCLONEURL="git@github.com/alexharries/drupal7_common_features.git"
+  FEATURESCLONEURL="git@github.com:alexharries/drupal7_common_features.git"
 fi
 
 # Work out what branch we want to check out our project files from.
@@ -890,10 +886,10 @@ What is the full clone URL of the repo? : "
 fi
 
 if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
-  git clone "$GITDEPTH" --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" drupal7_common_features
+  ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" drupal7_common_features
   cd drupal7_common_features
 
-  if [ ! "x$GITDEPTH" = "x" ]; then
+  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -915,7 +911,7 @@ fi
 #stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 #if echo "$answer" | grep -iq "^y" ;then
 #  cd "$BUILDPATH"
-#  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com/alexharries/drupal7_common_features.git drupal7_common_features
+#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:alexharries/drupal7_common_features.git drupal7_common_features
 #
 #  echo "
 #
@@ -935,7 +931,7 @@ fi
 #stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 #if echo "$answer" | grep -iq "^y" ;then
 #  cd "$BUILDPATH"
-#  git clone "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com/fourcommunications/drupal7_four_features.git drupal7_four_features
+#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:fourcommunications/drupal7_four_features.git drupal7_four_features
 #
 #  echo "
 #
@@ -979,11 +975,11 @@ elif echo "$answer" | grep -iq "^4" ;then
 fi
 
 if [ "$PROJECTSCHECKOUT" = "four" ]; then
-  PROJECTSCLONEURL="git@github.com/fourcommunications/drupal7_sites_projects.git"
+  PROJECTSCLONEURL="git@github.com:fourcommunications/drupal7_sites_projects.git"
 fi
 
 if [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
-  PROJECTSCLONEURL="git@github.com/alexharries/drupal7_sites_projects.git"
+  PROJECTSCLONEURL="git@github.com:alexharries/drupal7_sites_projects.git"
 fi
 
 # Work out what branch we want to check out our project files from.
@@ -1018,10 +1014,10 @@ What is the full clone URL of the repo? : "
 fi
 
 if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  git clone "$GITDEPTH" --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
+  ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" drupal7_sites_projects
   cd drupal7_sites_projects
 
-  if [ ! "x$GITDEPTH" = "x" ]; then
+  if [ ! "x$GITCLONECOMMAND" = "x" ]; then
     removegit
   else
     # Ignore file permission changes.
@@ -1067,7 +1063,7 @@ Multisite directory $MULTISITEPHYSICALLOCATION not found. Do you want to create 
 
 Do you want to create a Bootstrap sub-subtheme and commit it to the repo?
 
-(Le quoi? See git@github.com/alexharries/greyhead_bootstrap for more info.)
+(Le quoi? See git@github.com:alexharries/greyhead_bootstrap for more info.)
 
 Y/n: "
 
