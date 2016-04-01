@@ -35,7 +35,7 @@ while [ "$#" -gt 0 ]; do
         FILESPATH="${1#*=}"
         echo "FILESPATH: $FILESPATH"
         ;;
-# TODO: Other fields to be added: GITHUBUSER_CORE, CORE_ADD_UPSTREAM, GITHUBUSER_CORE_UPSTREAM,
+# TODO: Other fields to be added: GITHUBUSER_CORE, ADD_UPSTREAM, GITHUBUSER_UPSTREAM,
     --githubuser=*)
         GITHUBUSER_CORE="${1#*=}"
         echo "GITHUBUSER_CORE: $GITHUBUSER_CORE"
@@ -45,8 +45,8 @@ while [ "$#" -gt 0 ]; do
         echo "GITHUBUSER_UPSTREAM: $GITHUBUSER_UPSTREAM"
         ;;
     --coreaddupstream=*)
-        CORE_ADD_UPSTREAM="${1#*=}"
-        echo "CORE_ADD_UPSTREAM: $CORE_ADD_UPSTREAM"
+        ADD_UPSTREAM="${1#*=}"
+        echo "CORE_ADD_UPSTREAM: $ADD_UPSTREAM"
         ;;
     --help) print_help;;
     *)
@@ -488,7 +488,7 @@ fi
 # ---
 
 # Do we know if we're adding an upstream repo to core?
-if [ ! "$CORE_ADD_UPSTREAM" = "yes" ] && [ ! "$CORE_ADD_UPSTREAM" = "no" ]; then
+if [ ! "$ADD_UPSTREAM" = "yes" ] && [ ! "$ADD_UPSTREAM" = "no" ]; then
   # Have we been passed in a --githubuser parameter? If not, get it now.
   echo -n "
   *************************************************************************
@@ -502,34 +502,34 @@ if [ ! "$CORE_ADD_UPSTREAM" = "yes" ] && [ ! "$CORE_ADD_UPSTREAM" = "no" ]; then
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^y" ;then
-    CORE_ADD_UPSTREAM="yes"
+    ADD_UPSTREAM="yes"
   else
-    CORE_ADD_UPSTREAM="no"
+    ADD_UPSTREAM="no"
   fi
 fi
 
-if [ "$CORE_ADD_UPSTREAM" = "yes" ]; then
-  if [ "x$GITHUBUSER_CORE_UPSTREAM" = "x" ]; then
+if [ "$ADD_UPSTREAM" = "yes" ]; then
+  if [ "x$GITHUBUSER_UPSTREAM" = "x" ]; then
     # Add remotes.
-    GITHUBUSER_CORE_UPSTREAM="$GITHUBUSER_DEFAULT"
+    GITHUBUSER_UPSTREAM="$GITHUBUSER_DEFAULT"
     echo -n "
 *************************************************************************
 
 What is the upstream Github account to pull changes from?
-Leave blank to use the default: '$GITHUBUSER_CORE_UPSTREAM'
+Leave blank to use the default: '$GITHUBUSER_UPSTREAM'
 : "
 
-    read GITHUBUSER_CORE_UPSTREAM_ENTERED
-    if [ ! "x$GITHUBUSER_CORE_UPSTREAM_ENTERED" = "x" ]; then
-      GITHUBUSER_CORE_UPSTREAM="$GITHUBUSER_CORE_UPSTREAM_ENTERED"
+    read GITHUBUSER_UPSTREAM_ENTERED
+    if [ ! "x$GITHUBUSER_UPSTREAM_ENTERED" = "x" ]; then
+      GITHUBUSER_UPSTREAM="$GITHUBUSER_UPSTREAM_ENTERED"
     fi
   fi
 
   cd "$BUILDPATH/core"
 
-  echo "Using: $GITHUBUSER_CORE_UPSTREAM. Adding remote..."
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_CORE_UPSTREAM/drupal7_core.git"
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_core.git"
 
   git remote add upstream "$REMOTE"
 
@@ -545,15 +545,15 @@ fi
 
 GITHUBUSER_SITES_COMMON="$GITHUBUSER_CORE"
 
-echo -n "
-*************************************************************************
-
-What is the Github account from which you want to clone the drupal7_sites_common repo? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON'
-: "
-read GITHUBUSER_SITES_COMMON_ENTERED
-if [ ! "x$GITHUBUSER_SITES_COMMON_ENTERED" = "x" ]; then
-  GITHUBUSER_SITES_COMMON="$GITHUBUSER_SITES_COMMON_ENTERED"
-fi
+#echo -n "
+#*************************************************************************
+#
+#What is the Github account from which you want to clone the drupal7_sites_common repo? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON'
+#: "
+#read GITHUBUSER_SITES_COMMON_ENTERED
+#if [ ! "x$GITHUBUSER_SITES_COMMON_ENTERED" = "x" ]; then
+#  GITHUBUSER_SITES_COMMON="$GITHUBUSER_SITES_COMMON_ENTERED"
+#fi
 echo "Using: $GITHUBUSER_SITES_COMMON
 
 Cloning Drupal sites common branch $PROJECTSBRANCH from $GITHUBUSER_SITES_COMMON into $BUILDPATH/sites-common ..."
@@ -575,35 +575,36 @@ fi
 
 # ---
 
-echo -n "
-*************************************************************************
+#echo -n "
+#*************************************************************************
+#
+#Do you want to add an upstream remote for drupal7_sites_common? E.g. if this is a
+#forked repo, you can add the fork's source repo so you can then pull in changes
+#by running: git fetch upstream; git checkout master; git merge upstream/master
+#
+#Press Y/n: "
+#
+#old_stty_cfg=$(stty -g)
+#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#if echo "$answer" | grep -iq "^y" ;then
+#  # Add remotes.
+#  GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_UPSTREAM"
+#  echo -n "
+#*************************************************************************
+#
+#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON_UPSTREAM'
+#: "
+#  read GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED
+#  if [ ! "x$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED" = "x" ]; then
+#    GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
+#  fi
 
-Do you want to add an upstream remote for drupal7_sites_common? E.g. if this is a
-forked repo, you can add the fork's source repo so you can then pull in changes
-by running: git fetch upstream; git checkout master; git merge upstream/master
-
-Press Y/n: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  # Add remotes.
-  GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_CORE_UPSTREAM"
-  echo -n "
-*************************************************************************
-
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON_UPSTREAM'
-: "
-  read GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED
-  if [ ! "x$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED" = "x" ]; then
-    GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
-  fi
-
+if [ "$ADD_UPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/sites-common"
 
-  echo "Using: $GITHUBUSER_SITES_COMMON_UPSTREAM. Adding remote..."
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_SITES_COMMON_UPSTREAM/drupal7_sites_common.git"
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_sites_common.git"
 
   git remote add upstream "$REMOTE"
 
@@ -615,7 +616,6 @@ What is the upstream Github account to pull changes from? Leave blank to use the
   echo "
   Continuing...
   "
-
 fi
 
 
@@ -626,15 +626,15 @@ if [ "$BUILDTYPE" = "LOCAL" ]; then
 
   GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_SITES_COMMON"
 
-  echo -n "
-  *************************************************************************
-
-  What is the Github account from which you want to clone the drupal7_multisite_template repo? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE'
-  : "
-  read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
-  if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
-    GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED"
-  fi
+#  echo -n "
+#  *************************************************************************
+#
+#  What is the Github account from which you want to clone the drupal7_multisite_template repo? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE'
+#  : "
+#  read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
+#  if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
+#    GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED"
+#  fi
   echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
 
 Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITE_TEMPLATE into $BUILDPATH/multisite-template ..."
@@ -656,37 +656,38 @@ Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTIS
 
   # ---
 
-  echo -n "
-  *************************************************************************
+#  echo -n "
+#  *************************************************************************
+#
+#  Do you want to add an upstream remote for drupal7_multisite_template? E.g. if this is a
+#  forked repo, you can add the fork's source repo so you can then pull in changes
+#  by running: git fetch upstream; git checkout master; git merge upstream/master
+#
+#  Y/n: "
+#
+#  old_stty_cfg=$(stty -g)
+#  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#  if echo "$answer" | grep -iq "^y" ;then
+#    # Add remotes.
+#    GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM"
+#    echo -v "
+#  *************************************************************************
+#
+#  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM'
+#  : "
+#    read GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED
+#    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED" = "x" ]; then
+#      GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
+#    fi
 
-  Do you want to add an upstream remote for drupal7_multisite_template? E.g. if this is a
-  forked repo, you can add the fork's source repo so you can then pull in changes
-  by running: git fetch upstream; git checkout master; git merge upstream/master
-
-  Y/n: "
-
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^y" ;then
-    # Add remotes.
-    GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM"
-    echo -v "
-  *************************************************************************
-
-  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM'
-  : "
-    read GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED
-    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED" = "x" ]; then
-      GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
-    fi
-
+  if [ "$ADD_UPSTREAM" = "yes" ]; then
     cd "$BUILDPATH/multisite-template"
 
-    echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM. Adding remote..."
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-    REMOTE="git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM/drupal7_multisite_template.git"
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_multisite_template.git"
 
-    git remote add upstream $REMOTE
+    git remote add upstream "$REMOTE"
 
     echo "Remote '$REMOTE' added. Please check the following output is correct:
 
@@ -703,15 +704,15 @@ fi
 # Now multisitemaker.
 GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_SITES_COMMON"
 
-echo -n "
-*************************************************************************
-
-What is the Github account from which you want to clone the greyhead_multisitemaker repo? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER'
-: "
-read GITHUBUSER_MULTISITEMAKER_ENTERED
-if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
-  GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_MULTISITEMAKER_ENTERED"
-fi
+#echo -n "
+#*************************************************************************
+#
+#What is the Github account from which you want to clone the greyhead_multisitemaker repo? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER'
+#: "
+#read GITHUBUSER_MULTISITEMAKER_ENTERED
+#if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
+#  GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_MULTISITEMAKER_ENTERED"
+#fi
 echo "Using: $GITHUBUSER_MULTISITEMAKER
 
 Cloning Drupal multisite maker branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITEMAKER into $BUILDPATH/multisite-maker ..."
@@ -733,35 +734,36 @@ fi
 
 # ---
 
-echo -n "
-*************************************************************************
+#echo -n "
+#*************************************************************************
+#
+#Do you want to add an upstream remote for greyhead_multisitemaker? E.g. if this is a
+#forked repo, you can add the fork's source repo so you can then pull in changes
+#by running: git fetch upstream; git checkout master; git merge upstream/master
+#
+#Y/n: "
+#
+#old_stty_cfg=$(stty -g)
+#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#if echo "$answer" | grep -iq "^y" ;then
+#  # Add remotes.
+#  GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
+#  echo -v "
+#*************************************************************************
+#
+#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_UPSTREAM'
+#: "
+#  read GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED
+#  if [ ! "x$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED" = "x" ]; then
+#    GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
+#  fi
 
-Do you want to add an upstream remote for greyhead_multisitemaker? E.g. if this is a
-forked repo, you can add the fork's source repo so you can then pull in changes
-by running: git fetch upstream; git checkout master; git merge upstream/master
-
-Y/n: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  # Add remotes.
-  GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
-  echo -v "
-*************************************************************************
-
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_UPSTREAM'
-: "
-  read GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED
-  if [ ! "x$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED" = "x" ]; then
-    GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
-  fi
-
+if [ "$ADD_UPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/multisite-maker"
 
-  echo "Using: $GITHUBUSER_MULTISITEMAKER_UPSTREAM. Adding remote..."
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_MULTISITEMAKER_UPSTREAM/greyhead_multisitemaker.git"
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/greyhead_multisitemaker.git"
 
   git remote add upstream "$REMOTE"
 
@@ -778,15 +780,15 @@ fi
 # Now drupal-scripts-of-usefulness.
 GITHUBUSER_SCRIPTS="$GITHUBUSER_MULTISITEMAKER"
 
-echo -n "
-*************************************************************************
-
-What is the Github account from which you want to clone the drupal-scripts-of-usefulness repo? Leave blank to use the default: '$GITHUBUSER_SCRIPTS'
-: "
-read GITHUBUSER_SCRIPTS_ENTERED
-if [ ! "x$GITHUBUSER_SCRIPTS_ENTERED" = "x" ]; then
-  GITHUBUSER_SCRIPTS="$GITHUBUSER_SCRIPTS_ENTERED"
-fi
+#echo -n "
+#*************************************************************************
+#
+#What is the Github account from which you want to clone the drupal-scripts-of-usefulness repo? Leave blank to use the default: '$GITHUBUSER_SCRIPTS'
+#: "
+#read GITHUBUSER_SCRIPTS_ENTERED
+#if [ ! "x$GITHUBUSER_SCRIPTS_ENTERED" = "x" ]; then
+#  GITHUBUSER_SCRIPTS="$GITHUBUSER_SCRIPTS_ENTERED"
+#fi
 echo "Using: $GITHUBUSER_SCRIPTS
 
 Cloning scripts of usefulness branch $PROJECTSBRANCH from $GITHUBUSER_SCRIPTS into $BUILDPATH/scripts-of-usefulness ..."
@@ -808,35 +810,36 @@ fi
 
 # ---
 
-echo -n "
-*************************************************************************
+#echo -n "
+#*************************************************************************
+#
+#Do you want to add an upstream remote for drupal-scripts-of-usefulness? E.g. if this is a
+#forked repo, you can add the fork's source repo so you can then pull in changes
+#by running: git fetch upstream; git checkout master; git merge upstream/master
+#
+#Y/n: "
+#
+#old_stty_cfg=$(stty -g)
+#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+#if echo "$answer" | grep -iq "^y" ;then
+#  # Add remotes.
+#  GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
+#  echo -v "
+#*************************************************************************
+#
+#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_UPSTREAM'
+#: "
+#  read GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED
+#  if [ ! "x$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED" = "x" ]; then
+#    GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED"
+#  fi
 
-Do you want to add an upstream remote for drupal-scripts-of-usefulness? E.g. if this is a
-forked repo, you can add the fork's source repo so you can then pull in changes
-by running: git fetch upstream; git checkout master; git merge upstream/master
-
-Y/n: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^y" ;then
-  # Add remotes.
-  GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
-  echo -v "
-*************************************************************************
-
-What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_UPSTREAM'
-: "
-  read GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED
-  if [ ! "x$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED" = "x" ]; then
-    GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED"
-  fi
-
+if [ "$ADD_UPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/scripts-of-usefulness"
 
-  echo "Using: $GITHUBUSER_SCRIPTS_UPSTREAM. Adding remote..."
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-  REMOTE="git@github.com:$GITHUBUSER_SCRIPTS_UPSTREAM/drupal-scripts-of-usefulness.git"
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal-scripts-of-usefulness.git"
 
   git remote add upstream "$REMOTE"
 
