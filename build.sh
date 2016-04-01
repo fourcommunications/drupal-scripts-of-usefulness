@@ -78,7 +78,7 @@ function removegit {
 }
 
 function createtag {
-  git tag "$1-v$2" -s -a -m "Tagging '$1-v$2' for $1." && git push origin "$1-v$2"
+  git tag "$2" -a -m "Tagging version $2 for $1." && git push origin "$2"
 }
 
 echo "
@@ -227,6 +227,35 @@ fi
 
 echo "Build type: $BUILDTYPE"
 
+echo -n "
+*************************************************************************
+
+What is the multisite directory name for this build?
+
+This will be the directory in sites/ which contains modules, themes and files
+for this build.
+
+If you leave this blank, you will have to manually create the multisite
+directory from the multisites template (or build it yourself of course).
+
+You can enter 'default' if you want this site to use the sites/default
+directory, but this will cause problems if you want to deploy this code to a
+dev, staging or live server using these deployment scripts.
+
+:"
+
+read MULTISITENAME
+echo "
+
+Using: $MULTISITENAME.
+
+"
+
+# Remove hyphens from $MULTISITENAME, if any exist.
+MULTISITENAMENOHYPHENS=$(echo "$MULTISITENAME" | sed 's/[\._-]//g')
+
+# ---
+
 # Have we been asked to build a live deployment? Find out if we are to build
 # from a pre-existing tag, or create a new one (or both, conceivably...).
 if [ "$BUILDTYPE" = "LIVE" ]; then
@@ -261,6 +290,7 @@ fi
 # directories.
 GITCLONECOMMAND="git clone"
 REMOVEGIT="no"
+BUILDARCHIVENAME=""
 
 # Determine the branches to use for projects. If we've been asked to build from
 # a particular tag, then we will attempt to check each project out at that tag.
@@ -268,51 +298,21 @@ if [ ! "x$BUILDFROMTAG" = "x" ]; then
   REMOVEGIT="yes"
   PROJECTSBRANCH="$BUILDFROMTAG"
   GITCLONECOMMAND="$GITCLONECOMMAND --depth 1"
-  BUILDPATH_BUILDTYPE="tag-v$BUILDFROMTAG"
+  BUILDARCHIVENAME="drupal7-v$BUILDFROMTAG-$MULTISITENAME"
+  BUILDTYPE="LIVE"
 elif [[ "$BUILDTYPE" = "LOCAL" || "$BUILDTYPE" = "DEV" ]]; then
   PROJECTSBRANCH="develop"
-  BUILDPATH_BUILDTYPE="develop"
+#  BUILDARCHIVENAME="develop"
 elif [[ "$BUILDTYPE" = "STAGING" ]]; then
   PROJECTSBRANCH="rc"
-  BUILDPATH_BUILDTYPE="staging"
+#  BUILDARCHIVENAME="staging"
 elif [[ "$BUILDTYPE" = "LIVE" ]]; then
   PROJECTSBRANCH="master"
 
   if [ ! "x$CREATETAG" = "x" ]; then
-    BUILDPATH_BUILDTYPE="live-tag-v$BUILDFROMTAG"
-  else
-    BUILDPATH_BUILDTYPE="live"
+    BUILDARCHIVENAME="drupal7-v$CREATETAG-$MULTISITENAME"
   fi
 fi
-
-echo -n "
-*************************************************************************
-
-What is the multisite directory name for this build?
-
-This will be the directory in sites/ which contains modules, themes and files
-for this build.
-
-If you leave this blank, you will have to manually create the multisite
-directory from the multisites template (or build it yourself of course).
-
-You can enter 'default' if you want this site to use the sites/default
-directory, but this will cause problems if you want to deploy this code to a
-dev, staging or live server using these deployment scripts.
-
-:"
-
-read MULTISITENAME
-echo "
-
-Using: $MULTISITENAME.
-
-"
-
-# Remove hyphens from $MULTISITENAME, if any exist.
-MULTISITENAMENOHYPHENS=$(echo "$MULTISITENAME" | sed 's/[\._-]//g')
-
-# ---
 
 echo -n "
 *************************************************************************
@@ -351,7 +351,16 @@ PWD=$(pwd)
 
 # Example build path: /Volumes/Sites/4Com/builds/develop/monkey/scripts-of-usefulness/../../../$BUILDSUBDIRECTORY/$MULTISITENAME
 # ... which becomes: /Volumes/Sites/4Com/builds/develop/crapterliving
-BUILDPATH_DEFAULT="$PWD/../../../$BUILDPATH_BUILDTYPE/$BUILDPATH_SUBDIR"
+BUILDPATH_DEFAULT="$PWD/$BUILDTYPE"
+
+# If this if a live deployment, add the build archive name to the build path.
+if [ "$BUILDTYPE" = "LIVE" ]; then
+  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT/$BUILDARCHIVENAME"
+# If this isn't a live deployment, add the multisite directory to the default
+# build path.
+else
+  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT/$MULTISITEDIRECTORY"
+fi
 
 if [ "x$BUILDPATH" = "x" ]; then
   BUILDPATH="$PWD"
@@ -415,7 +424,7 @@ echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 # Only request files path if this isn't a live build.
 if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
-  FILESPATHDEFAULT="$BUILDPATH/../../files/$BUILDPATH_BUILDTYPE/$MULTISITENAME"
+  FILESPATHDEFAULT="$BUILDPATH/../../files/$BUILDTYPE/$MULTISITENAME"
   if [ ! -d "$FILESPATH" ]; then
     until [ -d "$FILESPATH" ]; do
       echo -n "
@@ -488,7 +497,7 @@ fi
 # ---
 
 # Do we know if we're adding an upstream repo to core?
-if [ ! "$ADD_UPSTREAM" = "yes" ] && [ ! "$ADD_UPSTREAM" = "no" ]; then
+if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADD_UPSTREAM" = "yes" ] && [ ! "$ADD_UPSTREAM" = "no" ]; then
   # Have we been passed in a --githubuser parameter? If not, get it now.
   echo -n "
   *************************************************************************
@@ -1796,55 +1805,58 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
   cd "$BUILDPATH"
 
   # If sites-common is present.
-  if [ -d "sites-common" ]; then
+  if [ -d "$BUILDPATH/sites-common" ]; then
     # If core/www/sites exists.
-    if [ -e "core/www/sites" ]; then
-      rm core/www/sites
+    if [ -e "$BUILDPATH/core/www/sites" ]; then
+      rm "$BUILDPATH/core/www/sites"
     fi
 
     # Move sites-common to core/www/sites.
-    mv sites-common core/www/sites
+    mv "$BUILDPATH/sites-common" "$BUILDPATH/core/www/sites"
   fi
 
   # If features is present.
-  if [ -d "features" ]; then
+  if [ -d "$BUILDPATH/features" ]; then
     # If core/www/sites/all/features exists.
-    if [ -e "core/www/sites/all/features" ]; then
-      rm core/www/sites/all/features
+    if [ -e "$BUILDPATH/core/www/sites/all/features" ]; then
+      rm "$BUILDPATH/core/www/sites/all/features"
     fi
 
     # Move features to core/www/sites/all/features.
-    mv features core/www/sites/all/features
+    mv "$BUILDPATH/features core/www/sites/all/features"
   fi
 
   # If four-features is present.
-  if [ -d "four-features" ]; then
+  if [ -d "$BUILDPATH/four-features" ]; then
     # If core/www/sites/all/four-features exists.
-    if [ -e "core/www/sites/all/four-features" ]; then
-      rm core/www/sites/all/four-features
+    if [ -e "$BUILDPATH/core/www/sites/all/four-features" ]; then
+      rm "$BUILDPATH/core/www/sites/all/four-features"
     fi
 
     # Move four-features to core/www/sites/all/four-features.
-    mv four-features core/www/sites/all/four-features
+    mv "$BUILDPATH/four-features core/www/sites/all/four-features"
   fi
 
   # If sites-projects/$MULTISITENAME is present.
-  if [ -d "sites-projects/$MULTISITENAME" ]; then
+  if [ -d "$BUILDPATH/sites-projects/$MULTISITENAME" ]; then
     # If core/www/sites/$MULTISITENAME exists.
-    if [ -e "core/www/sites/$MULTISITENAME" ]; then
-      rm "core/www/sites/$MULTISITENAME"
+    if [ -e "$BUILDPATH/core/www/sites/$MULTISITENAME" ]; then
+      rm "$BUILDPATH/core/www/sites/$MULTISITENAME"
     fi
 
     # Move sites-projects/$MULTISITENAME to
     # core/www/sites/$MULTISITENAME.
-    mv "sites-projects/$MULTISITENAME" "core/www/sites/$MULTISITENAME"
+    mv "$BUILDPATH/sites-projects/$MULTISITENAME" "$BUILDPATH/core/www/sites/$MULTISITENAME"
   fi
+
+  # Lastly, remove the rest of sites-projects
+  rm -rf "$BUILDPATH/sites-projects"
 
   # Now create the tar.gz. Change to the parent dir of the build directory.
   cd "$BUILDPATH/.."
 
   # Create a new directory called drupal7-$MULTISITENAME-v$CREATETAG.tar.gz
-  TAGARCHIVENAME="drupal7-$MULTISITENAME-v$CREATETAG.tar.gz"
+  TAGARCHIVENAME="drupal7-v$CREATETAG-$MULTISITENAME.tar.gz"
   tar -czvf "$BUILDPATH/../$TAGARCHIVENAME" "$BUILDPATH"
 
   # Do we want to keep the build directory, e.g. for debuggerising purposes?
