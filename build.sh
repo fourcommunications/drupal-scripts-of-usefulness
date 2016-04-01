@@ -355,11 +355,11 @@ BUILDPATH_DEFAULT="$PWD/$BUILDTYPE"
 
 # If this if a live deployment, add the build archive name to the build path.
 if [ "$BUILDTYPE" = "LIVE" ]; then
-  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT/$BUILDARCHIVENAME"
+  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT"
 # If this isn't a live deployment, add the multisite directory to the default
 # build path.
 else
-  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT/$MULTISITEDIRECTORY"
+  BUILDPATH_DEFAULT="$BUILDPATH_DEFAULT/$MULTISITENAME"
 fi
 
 if [ "x$BUILDPATH" = "x" ]; then
@@ -373,8 +373,13 @@ if [ "x$BUILDPATH" = "x" ]; then
   This directory MUST NOT already exist (since you could accidentally
   overwrite another project build).
 
-  Leave blank to use the default: '$BUILDPATH_DEFAULT'
-  :"
+  Leave blank to use the default: '$BUILDPATH_DEFAULT'"
+
+  if [ "$BUILDTYPE" = "LIVE" ]; then
+    echo "Because this is a LIVE deployment, the build directory /$BUILDARCHIVENAME will be created below this build path."
+  fi
+
+  echo -n ": "
     read BUILDPATH_ENTERED
     if [ ! "x$BUILDPATH_ENTERED" = "x" ]; then
       BUILDPATH="$BUILDPATH_ENTERED"
@@ -393,6 +398,10 @@ $BUILDPATH-old
       mv "$BUILDPATH" "$BUILDPATH-old"
     fi
   done
+fi
+
+if [ "$BUILDTYPE" = "LIVE" ]; then
+  BUILDPATH="$BUILDPATH/$BUILDARCHIVENAME"
 fi
 
 echo "Making directory $BUILDPATH..."
@@ -1856,8 +1865,8 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
   cd "$BUILDPATH/.."
 
   # Create a new directory called drupal7-$MULTISITENAME-v$CREATETAG.tar.gz
-  TAGARCHIVENAME="drupal7-v$CREATETAG-$MULTISITENAME.tar.gz"
-  tar -czvf "$BUILDPATH/../$TAGARCHIVENAME" "$BUILDPATH"
+  TAGARCHIVENAME="$BUILDARCHIVENAME.tar.gz"
+  tar -czvf "$BUILDPATH/../$TAGARCHIVENAME" "$BUILDARCHIVENAME"
 
   # Do we want to keep the build directory, e.g. for debuggerising purposes?
   echo -n "
