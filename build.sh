@@ -854,7 +854,8 @@ if [ "$ADD_UPSTREAM" = "yes" ]; then
 fi
 
 # Download Drupal 7 core.
-"$STARTINGDIRECTORY/script-components/download-drupal7-core.sh" --buildpath="$BUILDPATH" --drupalversion=7
+COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --buildpath=$BUILDPATH --drupalversion=7"
+eval ${COMMAND}
 
 cd "$BUILDPATH"
 echo -n "
@@ -1718,7 +1719,7 @@ Clearing caches..."
       drush --uri="$SITEURI" cc all
 
       # Open the site in a web browser.
-      COMMAND="$STARTINGDIRECTORY/script-components/open-url.sh $PROTOCOL://$SITEURI"
+      COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/open-url.sh $PROTOCOL://$SITEURI"
       eval ${COMMAND}
 
       echo "
