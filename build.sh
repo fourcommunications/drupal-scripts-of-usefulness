@@ -926,6 +926,7 @@ What is the full clone URL of the repo? : "
 fi
 
 if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+  cd "$BUILDPATH"
   ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
 
@@ -939,6 +940,9 @@ if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] |
   if [ ! "x$CREATETAG" = "x" ]; then
     createtag "$MULTISITENAME" "$CREATETAG"
   fi
+
+  # Link core/www/sites/all/modules/features to $BUILDPATH/features
+  ln -s "$BUILDPATH/features" "$BUILDPATH/core/www/sites/all/modules/features"
 fi
 
 #echo -n "
