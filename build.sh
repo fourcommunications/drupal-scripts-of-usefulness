@@ -73,8 +73,8 @@ done
 
 function removegit {
   # Recursively remove .git and .gitignore files.
-  echo "Removing .git* files from $(pwd)..."
-  find . -name '.git*' | xargs rm -rf
+  echo "Removing .git* files from $1..."
+  find "$1/." -name '.git*' | xargs rm -rf
 }
 
 function createtag {
@@ -365,7 +365,7 @@ fi
 if [ "x$BUILDPATH" = "x" ]; then
   BUILDPATH="$PWD"
   until [ ! -d "$BUILDPATH" ]; do
-    echo -n "
+    echo "
   *************************************************************************
 
   What directory should we build Drupal in, without a trailing slash?
@@ -373,10 +373,12 @@ if [ "x$BUILDPATH" = "x" ]; then
   This directory MUST NOT already exist (since you could accidentally
   overwrite another project build).
 
-  Leave blank to use the default: '$BUILDPATH_DEFAULT'"
+  Leave blank to use the default: '$BUILDPATH_DEFAULT'
+  "
 
   if [ "$BUILDTYPE" = "LIVE" ]; then
-    echo "Because this is a LIVE deployment, the build directory /$BUILDARCHIVENAME will be created below this build path."
+    echo "Because this is a LIVE deployment, the build directory /$BUILDARCHIVENAME will be created below this build path.
+    "
   fi
 
   echo -n ": "
@@ -387,7 +389,7 @@ if [ "x$BUILDPATH" = "x" ]; then
       BUILDPATH="$BUILDPATH_DEFAULT"
     fi
 
-    if [ -d "$BUILDPATH" ]; then
+    multisite-maker    if [ -d "$BUILDPATH" ]; then
       echo "
 ***************************************************************
 WARNING:
@@ -398,10 +400,6 @@ $BUILDPATH-old
       mv "$BUILDPATH" "$BUILDPATH-old"
     fi
   done
-fi
-
-if [ "$BUILDTYPE" = "LIVE" ]; then
-  BUILDPATH="$BUILDPATH/$BUILDARCHIVENAME"
 fi
 
 echo "Making directory $BUILDPATH..."
@@ -493,7 +491,7 @@ ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHU
 cd "core"
 
 if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit
+  removegit "$BUILDPATH/core"
 else
   # Ignore file permission changes.
   git config core.fileMode false
@@ -581,7 +579,7 @@ ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHU
 cd "sites-common"
 
 if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit
+  removegit "$BUILDPATH/sites-common"
 else
   # Ignore file permission changes.
   git config core.fileMode false
@@ -639,8 +637,10 @@ fi
 
 # ---
 
-# Only clone multisite template if this is a LOCAL build.
-if [ "$BUILDTYPE" = "LOCAL" ]; then
+## Only clone multisite template if this is a LOCAL build.
+# ^ This is wrong. We delete multisite template later; we need it during build
+# to provide the .htaccess template.
+#if [ "$BUILDTYPE" = "LOCAL" ]; then
 
   GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_SITES_COMMON"
 
@@ -662,7 +662,7 @@ Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTIS
   cd "multisite-template"
 
   if [ "x$REMOVEGIT" = "yes" ]; then
-    removegit
+    removegit "$BUILDPATH/multisite-template"
   else
     # Ignore file permission changes.
     git config core.fileMode false
@@ -717,7 +717,7 @@ Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTIS
     "
 
   fi
-fi
+#fi
 
 # Now multisitemaker.
 GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_SITES_COMMON"
@@ -740,7 +740,7 @@ ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHU
 cd "multisite-maker"
 
 if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit
+  removegit "$BUILDPATH/multisite-maker"
 else
   # Ignore file permission changes.
   git config core.fileMode false
@@ -816,7 +816,7 @@ ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHU
 cd "scripts-of-usefulness"
 
 if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit
+  removegit "$BUILDPATH/scripts-of-usefulness"
 else
   # Ignore file permission changes.
   git config core.fileMode false
@@ -949,7 +949,7 @@ if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] |
   cd features
 
   if [ "x$REMOVEGIT" = "yes" ]; then
-    removegit
+    removegit "$BUILDPATH/features"
   else
     # Ignore file permission changes.
     git config core.fileMode false
@@ -1081,7 +1081,7 @@ if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] |
   cd sites-projects
 
   if [ "x$REMOVEGIT" = "yes" ]; then
-    removegit
+    removegit "$BUILDPATH/sites-projects"
   else
     # Ignore file permission changes.
     git config core.fileMode false
@@ -1586,9 +1586,9 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
       "
 
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-Do you have a database dump you want to import? Y/n: "
+  Do you have a database dump you want to import? Y/n: "
 
       old_stty_cfg=$(stty -g)
       stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -1598,10 +1598,10 @@ Do you have a database dump you want to import? Y/n: "
 
         until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
           echo -n "
-*************************************************************************
+  *************************************************************************
 
-What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
-: "
+  What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
+  : "
           read DATABASEDUMPPATH
 
           if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
@@ -1638,35 +1638,35 @@ What is the absolute path to the database dump file, including the filename? (Le
 
     # Do they want us to install Drupal?
     echo -n "
-*************************************************************************
+  *************************************************************************
 
-Do you want to run the Drupal installer? This will set up a minimal
-Drupal install with a number of base modules and settings configured.
+  Do you want to run the Drupal installer? This will set up a minimal
+  Drupal install with a number of base modules and settings configured.
 
-Y/n: "
+  Y/n: "
 
     old_stty_cfg=$(stty -g)
     stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
     if echo "$answer" | grep -iq "^y" ;then
       # Get the admin username and password.
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-Please choose an administrator username for the root Drupal user: "
+  Please choose an administrator username for the root Drupal user: "
       read ADMINUSERNAME
 
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-Please choose a password for $ADMINUSERNAME: "
+  Please choose a password for $ADMINUSERNAME: "
       read ADMINPASS
 
       FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
 
       echo -n "
-*************************************************************************
+  *************************************************************************
 
-Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
+  Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
       read PROTOCOL
 
       if [ "x$PROTOCOL" = "x" ]; then
@@ -1827,23 +1827,23 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
   # If features is present.
   if [ -d "$BUILDPATH/features" ]; then
     # If core/www/sites/all/features exists.
-    if [ -e "$BUILDPATH/core/www/sites/all/features" ]; then
-      rm "$BUILDPATH/core/www/sites/all/features"
+    if [ -e "$BUILDPATH/core/www/sites/all/modules/features" ]; then
+      rm "$BUILDPATH/core/www/sites/all/modules/features"
     fi
 
     # Move features to core/www/sites/all/features.
-    mv "$BUILDPATH/features core/www/sites/all/features"
+    mv "$BUILDPATH/features core/www/sites/all/modules/features"
   fi
 
   # If four-features is present.
   if [ -d "$BUILDPATH/four-features" ]; then
     # If core/www/sites/all/four-features exists.
-    if [ -e "$BUILDPATH/core/www/sites/all/four-features" ]; then
-      rm "$BUILDPATH/core/www/sites/all/four-features"
+    if [ -e "$BUILDPATH/core/www/sites/all/modules/four-features" ]; then
+      rm "$BUILDPATH/core/www/sites/all/modules/four-features"
     fi
 
     # Move four-features to core/www/sites/all/four-features.
-    mv "$BUILDPATH/four-features core/www/sites/all/four-features"
+    mv "$BUILDPATH/four-features core/www/sites/all/modules/four-features"
   fi
 
   # If sites-projects/$MULTISITENAME is present.
@@ -1858,8 +1858,9 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
     mv "$BUILDPATH/sites-projects/$MULTISITENAME" "$BUILDPATH/core/www/sites/$MULTISITENAME"
   fi
 
-  # Lastly, remove the rest of sites-projects
+  # Lastly, remove the rest of sites-projects an multisite-template.
   rm -rf "$BUILDPATH/sites-projects"
+  rm -rf "$BUILDPATH/multisite-template"
 
   # Now create the tar.gz. Change to the parent dir of the build directory.
   cd "$BUILDPATH/.."
