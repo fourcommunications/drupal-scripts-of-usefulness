@@ -389,7 +389,7 @@ if [ "x$BUILDPATH" = "x" ]; then
       BUILDPATH="$BUILDPATH_DEFAULT"
     fi
 
-    multisite-maker    if [ -d "$BUILDPATH" ]; then
+    if [ -d "$BUILDPATH" ]; then
       echo "
 ***************************************************************
 WARNING:
