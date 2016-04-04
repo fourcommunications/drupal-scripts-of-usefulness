@@ -28,8 +28,8 @@ fi
 
 
 # Make sure the www and sites directories can be found.
-if ! [[ -d "../www" && -d "../sites" ]]; then
-  echo "Couldn't verify that ../www and ../sites can be found."
+if ! [[ -d "../core/www" && -d "../core/www/sites" ]]; then
+  echo "Couldn't verify that ../core/www and ../core/www/sites can be found."
   exit
 fi
 
@@ -120,7 +120,7 @@ for x in sites/*/files; do
   echo ""
 done
 
-printf "Making scripts in /deployment-scripts executable...\n"
-chmod -R +x deployment-scripts/*.sh
+printf "Making scripts in /scripts-of-usefulness executable...\n"
+chmod -R +x scripts-of-usefulness/*.sh
 
 echo "Done setting proper permissions on files and directories"
