@@ -108,6 +108,9 @@ build structure won't contain all these parts):
   / www
     / (Drupal 7 - index.php, cron.php, etc)
     / sites -> symlink to /sites-common
+    / profiles
+      / greyheadprofile-> symlink to /core/profiles/greyheadprofile
+      / fourprofile-> symlink to /core/profiles/fourprofile
 / sites-common
   / all
     / drush -> symlink to /sites-projects/_drush_aliases
@@ -117,7 +120,6 @@ build structure won't contain all these parts):
       / custom
         / greyhead_* -> various greyhead modules (Git submodules)
       / features -> optional symlink to /features
-      / four-features -> optional symlink to /four-features
     / themes
       / bootstrap
       / greyhead_bootstrap (Git submodule)
@@ -165,7 +167,7 @@ Either: alexharries/drupal7_common_features, at
 core/www/sites/all/modules/features
 
 Or: (Four Communications only) drupal7_four_features, at
-core/www/sites/all/modules/four-features
+core/www/sites/all/modules/features
 
 sites-projects: the directory where your individual multisite projects
 are kept. This will either be a checkout from a repo URL you specify,
@@ -963,47 +965,6 @@ if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] |
   ln -s "$BUILDPATH/features" "$BUILDPATH/core/www/sites/all/modules/features"
 fi
 
-#echo -n "
-#*************************************************************************
-#
-#Check out alexharries/drupal7_common_features?
-#Y/n: "
-#
-#old_stty_cfg=$(stty -g)
-#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#if echo "$answer" | grep -iq "^y" ;then
-#  cd "$BUILDPATH"
-#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:alexharries/drupal7_common_features.git features
-#
-#  echo "
-#
-#  ---
-#
-#  Symlinking sites/all/modules/features to $BUILDPATH/features:"
-#
-#  ln -s "$BUILDPATH/features" "$BUILDPATH/core/www/sites/all/modules/features"
-#fi
-#
-#echo -n "
-#*************************************************************************
-#
-#Check out drupal7_four_features? (This will only work if you have access to this Four Communications repo) Y/n: "
-#
-#old_stty_cfg=$(stty -g)
-#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#if echo "$answer" | grep -iq "^y" ;then
-#  cd "$BUILDPATH"
-#  ${GITCLONECOMMAND} "$GITDEPTH" --branch "$PROJECTSBRANCH" --recursive git@github.com:fourcommunications/drupal7_four_features.git four-features
-#
-#  echo "
-#
-#  ---
-#
-#  Symlinking sites/all/modules/features to $BUILDPATH/four-features:"
-#
-#  ln -s "$BUILDPATH/four-features" "$BUILDPATH/core/www/sites/all/modules/four-features"
-#fi
-
 # sites-projects
 
 cd "$BUILDPATH"
@@ -1358,11 +1319,16 @@ fi
 
 # Only symlink to files if we're not building for live, if the multisite dir
 # is set up, and there isn't already a files link/directory.
-if [[ ! "$BUILDTYPE" = "LIVE" && -d "$BUILDPATH/sites-projects/$MULTISITENAME" && ! -e "$BUILDPATH/sites-projects/$MULTISITENAME/files" ]]; then
+if [[ ! "$BUILDTYPE" = "LIVE" && -d "$BUILDPATH/sites-projects/$MULTISITENAME" ]]; then
   echo "
 *************************************************************************
 
 Symlinking $BUILDPATH/sites-projects/$MULTISITENAME/files to $FILESPATH: "
+
+  if [ -e "$BUILDPATH/sites-projects/$MULTISITENAME/files" ]; then
+    echo "$BUILDPATH/sites-projects/$MULTISITENAME/files exists; moving it to $BUILDPATH/files-old..."
+    mv "$BUILDPATH/sites-projects/$MULTISITENAME/files" "$BUILDPATH/files-old"
+  fi
 
   ln -s "$FILESPATH" "$BUILDPATH/sites-projects/$MULTISITENAME/files"
 fi
@@ -1375,14 +1341,26 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
   echo -n "
   *************************************************************************
 
-  Do you already have local_databases.php and local_settings.php files (Y) or do you
-  need to create new ones from the multisite template (n)?
+  Do you already have local_databases.php and local_settings.php files or do you
+  need to create new ones from the multisite template?
 
-  Y/n: "
+  1. I already have local_databases.php and local_settings.php files.
+  2. I need to create local_databases.php and local_settings.php files.
 
-  old_stty_cfg=$(stty -g)
-  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-  if echo "$answer" | grep -iq "^y" ;then
+  1/2: "
+
+  LOCALFILESCHOICE=""
+  until [ "$LOCALFILESCHOICE" = "1" ] || [ "$LOCALFILESCHOICE" = "2" ]; do
+    old_stty_cfg=$(stty -g)
+    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+    if echo "$answer" | grep -iq "^1" ;then
+      LOCALFILESCHOICE="1"
+    elif echo "$answer" | grep -iq "^2" ;then
+      LOCALFILESCHOICE="2"
+    fi
+  done
+
+  if [ "$LOCALFILESCHOICE" = "1" ]; then
     # Yes, get the files' absolute path.
     EXISTING_LOCALSETTINGSPATH_DEFAULT="$BUILDPATH/../local_settings.php"
 
@@ -1446,8 +1424,8 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
 #      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME"
 #    fi
 
-  else
-    # No.
+  elif [ "$LOCALFILESCHOICE" = "2" ]; then
+    # No existing local settings/db file, but we want one.
     LOCALDATABASESPATH="$BUILDPATH/core/local_databases.php"
 
     echo "
@@ -1463,12 +1441,13 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
     LOCALSETTINGSFILEPATH="$BUILDPATH/core/local_settings.php"
     cp "$BUILDPATH/multisite-template/local_settings.template.php" "$LOCALSETTINGSFILEPATH"
-
   fi
 
   # ---
 
-  if [ ! "x$MULTISITENAME" = "x" ]; then
+  # Only ask for DB connection details if we just created the
+  # $LOCALDATABASESPATH file.
+  if [ ! "x$LOCALDATABASESPATH" = "x" ] && [ ! "x$MULTISITENAME" = "x" ]; then
     echo -n "
   *************************************************************************
 
@@ -1584,45 +1563,49 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
       echo "
   ****************************************************************************
       "
+    fi
 
-      echo -n "
+    echo -n "
   *************************************************************************
 
   Do you have a database dump you want to import? Y/n: "
 
-      old_stty_cfg=$(stty -g)
-      stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-      if echo "$answer" | grep -iq "^y" ;then
-        # Get the DB path.
-        DATABASEDUMPPATH="monkey"
+    old_stty_cfg=$(stty -g)
+    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+    if echo "$answer" | grep -iq "^y" ;then
+      # Get the DB path.
+      DATABASEDUMPPATH="monkey"
 
-        until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
-          echo -n "
+      until [ -e "$DATABASEDUMPPATH" ] || [ "x$DATABASEDUMPPATH" = "x" ]; do
+        echo -n "
   *************************************************************************
 
   What is the absolute path to the database dump file, including the filename? (Leave blank to skip importing the database dump.)
   : "
-          read DATABASEDUMPPATH
+        read DATABASEDUMPPATH
 
-          if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
-            if [ ! -e "$DATABASEDUMPPATH" ]; then
-              echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
-            else
-              COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
-              echo "Attempting import: $COMMAND...
-              "
-              eval ${COMMAND}
-              echo "MySQL import done."
-            fi
+        if [ ! "x$DATABASEDUMPPATH" = "x" ]; then
+          if [ ! -e "$DATABASEDUMPPATH" ]; then
+            echo "Oops! '$DATABASEDUMPPATH' either doesn't exist or isn't a readable file. Please try again..."
+          else
+            COMMAND="mysql -u $DBUSERNAME -p$DBPASSWORD $DBNAME < $DATABASEDUMPPATH"
+            echo "Attempting import: $COMMAND...
+            "
+            eval ${COMMAND}
+            echo "MySQL import done."
           fi
+        fi
 
-        done
-      fi
-
+      done
+    else
       echo -n "
   *************************************************************************
 
-  Is Drupal already installed? Y/n: "
+  If the database contains an existing Drupal installation, do you want to rebuild caches?
+
+  This is recommended to prevent errors caused by the file system structure changing.
+
+  Y/n: "
 
       old_stty_cfg=$(stty -g)
       stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
@@ -1633,131 +1616,98 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
         drush rr --fire-bazooka
         drush cc all
         drush status
-      fi
-    fi
+      else
 
-    # Do they want us to install Drupal?
-    echo -n "
+        # Do they want us to install Drupal?
+        echo -n "
   *************************************************************************
 
-  Do you want to run the Drupal installer? This will set up a minimal
-  Drupal install with a number of base modules and settings configured.
+  Do you want to run the Drupal installer? This will wipe the database and
+  set up a minimal Drupal install with a number of base modules and settings
+  configured.
 
   Y/n: "
 
-    old_stty_cfg=$(stty -g)
-    stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-    if echo "$answer" | grep -iq "^y" ;then
-      # Get the admin username and password.
-      echo -n "
+        old_stty_cfg=$(stty -g)
+        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+        if echo "$answer" | grep -iq "^y" ;then
+          # Get the admin username and password.
+          echo -n "
   *************************************************************************
 
   Please choose an administrator username for the root Drupal user: "
-      read ADMINUSERNAME
+          read ADMINUSERNAME
 
-      echo -n "
+          echo -n "
   *************************************************************************
 
   Please choose a password for $ADMINUSERNAME: "
-      read ADMINPASS
+          read ADMINPASS
 
-      FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
+          FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
 
-      echo -n "
+          echo -n "
   *************************************************************************
 
   Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
-      read PROTOCOL
+          read PROTOCOL
 
-      if [ "x$PROTOCOL" = "x" ]; then
-        PROTOCOL="https"
+          if [ "x$PROTOCOL" = "x" ]; then
+            PROTOCOL="https"
+          fi
+
+          FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
+
+          # Do they want to enable four_communications_base_modules?
+          if [ "$FEATURESCHECKOUT" = "four" ]; then
+            FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules fourcomms_update_notifications four_communications_user_roles four_login_toboggan_settings"
+          # Otherwise, do they want to enable common_base_modules?
+          elif [ -d "$BUILDPATH/features/common_base_modules" ]; then
+            FEATURESTOENABLE="$FEATURESTOENABLE common_base_modules update_notifications_redirect common_user_roles login_toboggan_settings"
+          fi
+
+          echo "
+  *************************************************************************
+
+  Beginning install..."
+
+          cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
+
+          drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
+
+          echo "
+  *************************************************************************
+
+  Drupal installed - enabling features..."
+
+          drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
+
+          echo "
+  *************************************************************************
+
+  Reverting features..."
+
+          drush --uri="$SITEURI" fra -y
+
+          echo "
+  *************************************************************************
+
+  Clearing caches..."
+
+          drush --uri="$SITEURI" cc all
+
+          # Open the site in a web browser.
+          COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/open-url.sh $PROTOCOL://$SITEURI"
+          eval ${COMMAND}
+
+          echo "
+  *************************************************************************
+
+  You can now browse your site at $PROTOCOL://$SITEURI - yay!"
+
+        fi
       fi
-
-      FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
-
-      # Do they want to enable four_communications_base_modules?
-      if [ -d "$BUILDPATH/four-features" ]; then
-        # Actually, just do it :)
-
-#        echo -n "
-#*************************************************************************
-#
-#Do you want to enable the suite of Four Features? (Recommended) Y/n: "
-#
-#        old_stty_cfg=$(stty -g)
-#        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#        if echo "$answer" | grep -iq "^y" ;then
-#          FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules"
-#        fi
-
-        FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules fourcomms_update_notifications four_communications_user_roles four_login_toboggan_settings"
-
-      # Otherwise, do they want to enable common_base_modules?
-      elif [ -d "$BUILDPATH/features/common_base_modules" ]; then
-        # Just do it.
-
-#        echo -n "
-#*************************************************************************
-#
-#Do you want to enable the run the common_base_modules feature? Y/n: "
-#
-#        old_stty_cfg=$(stty -g)
-#        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#        if echo "$answer" | grep -iq "^y" ;then
-#          FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules"
-#        fi
-
-        FEATURESTOENABLE="$FEATURESTOENABLE common_base_modules update_notifications_redirect common_user_roles login_toboggan_settings"
-      fi
-
-      echo "
-*************************************************************************
-
-Beginning install..."
-
-      cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
-
-      drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
-
-      echo "
-*************************************************************************
-
-Drupal installed - enabling features..."
-
-      drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
-
-      echo "
-*************************************************************************
-
-Reverting features..."
-
-      drush --uri="$SITEURI" fra -y
-
-      echo "
-*************************************************************************
-
-Clearing caches..."
-
-      drush --uri="$SITEURI" cc all
-
-      # Open the site in a web browser.
-      COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/open-url.sh $PROTOCOL://$SITEURI"
-      eval ${COMMAND}
-
-      echo "
-*************************************************************************
-
-You can now browse your site at $PROTOCOL://$SITEURI - yay!"
-
     fi
-  else
-    echo "
-*************************************************************************
-
-This script can't set up the database because no multisite directory name has been entered.
-
-Please manually edit $BUILDPATH/core/local_databases.php to set
-the database details."
   fi
 fi
 
@@ -1772,7 +1722,6 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #      www
 #        sites -> /sites-common
 #  . features*
-#  . four-features*
 #  . sites-common
 #      [MULTISITENAME]* -> /sites-projects/[MULTISITENAME]
 #      all
@@ -1781,7 +1730,6 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #          contrib
 #          custom
 #          features* -> /features
-#          four-features* -> /four-features
 #        themes
 #      sites.php
 #    sites-projects*
@@ -1800,7 +1748,6 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #              contrib
 #              custom
 #              features
-#              four-features
 #            themes
 #          sites.php
 #
@@ -1808,7 +1755,6 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
 #
 #  . sites-common (must go first)
 #  . features*
-#  . four-features*
 #  . [MULTISITENAME]
 
   cd "$BUILDPATH"
@@ -1817,7 +1763,7 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
   if [ -d "$BUILDPATH/sites-common" ]; then
     # If core/www/sites exists.
     if [ -e "$BUILDPATH/core/www/sites" ]; then
-      rm "$BUILDPATH/core/www/sites"
+      rm -rf "$BUILDPATH/core/www/sites"
     fi
 
     # Move sites-common to core/www/sites.
@@ -1828,29 +1774,18 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
   if [ -d "$BUILDPATH/features" ]; then
     # If core/www/sites/all/features exists.
     if [ -e "$BUILDPATH/core/www/sites/all/modules/features" ]; then
-      rm "$BUILDPATH/core/www/sites/all/modules/features"
+      rm -rf "$BUILDPATH/core/www/sites/all/modules/features"
     fi
 
     # Move features to core/www/sites/all/features.
     mv "$BUILDPATH/features core/www/sites/all/modules/features"
   fi
 
-  # If four-features is present.
-  if [ -d "$BUILDPATH/four-features" ]; then
-    # If core/www/sites/all/four-features exists.
-    if [ -e "$BUILDPATH/core/www/sites/all/modules/four-features" ]; then
-      rm "$BUILDPATH/core/www/sites/all/modules/four-features"
-    fi
-
-    # Move four-features to core/www/sites/all/four-features.
-    mv "$BUILDPATH/four-features core/www/sites/all/modules/four-features"
-  fi
-
   # If sites-projects/$MULTISITENAME is present.
   if [ -d "$BUILDPATH/sites-projects/$MULTISITENAME" ]; then
     # If core/www/sites/$MULTISITENAME exists.
     if [ -e "$BUILDPATH/core/www/sites/$MULTISITENAME" ]; then
-      rm "$BUILDPATH/core/www/sites/$MULTISITENAME"
+      rm -rf "$BUILDPATH/core/www/sites/$MULTISITENAME"
     fi
 
     # Move sites-projects/$MULTISITENAME to

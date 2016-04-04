@@ -76,9 +76,15 @@ ln -s "$BUILDPATH/sites-common" "$BUILDPATH/core/www/sites"
 
 # ---
 
-echo "Symlinking profiles/greyhead to ../profiles/greyhead:"
+echo "Symlinking profiles/greyheadprofile to ../profiles/greyheadprofile:"
 
-ln -s "$BUILDPATH/core/profiles/greyhead" "$BUILDPATH/core/www/profiles/greyhead"
+ln -s "$BUILDPATH/core/profiles/greyheadprofile" "$BUILDPATH/core/www/profiles/greyheadprofile"
+
+# ---
+
+echo "Symlinking profiles/fourprofile to ../profiles/fourprofile:"
+
+ln -s "$BUILDPATH/core/profiles/fourprofile" "$BUILDPATH/core/www/profiles/fourprofile"
 
 # ---
 
