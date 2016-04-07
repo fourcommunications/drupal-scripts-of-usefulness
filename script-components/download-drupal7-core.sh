@@ -102,17 +102,15 @@ if [ -e "$HTACCESSPATH" ]; then
   HTACCESSREDIRECTSPATH="$BUILDPATH/sites-projects/$MULTISITENAME/htaccess-template-redirects"
 
   if [ -e "$HTACCESSREDIRECTSPATH" ]; then
+    # Copy the redirects file first, then delete it...
     echo "Copying htaccess redirects from $HTACCESSREDIRECTSPATH into $BUILDPATH/core/www/.htaccess:"
 
-    if [ -e "$HTACCESSREDIRECTSPATH" ]; then
-      # Copy the redirects file first, then delete it...
-      cp "$HTACCESSREDIRECTSPATH" "$BUILDPATH/core/www/"
-      cd "$BUILDPATH/core/www/"
-      perl -pe 's/# {{REDIRECTS}}/`cat htaccess-template-redirects`/e' "$HTACCESSPATH" > "$NEWHTACCESSPATH"
-      rm htaccess-template-redirects
-    else
-      echo "$HTACCESSREDIRECTSPATH doesn't exist or isn't readaboo. Damn."
-    fi
+    cp "$HTACCESSREDIRECTSPATH" "$BUILDPATH/core/www/"
+    cd "$BUILDPATH/core/www/"
+    perl -pe 's/# {{REDIRECTS}}/`cat htaccess-template-redirects`/e' "$HTACCESSPATH" > "$NEWHTACCESSPATH"
+    rm htaccess-template-redirects
+  else
+    echo "$HTACCESSREDIRECTSPATH doesn't exist or isn't readaboo. Damn."
   fi
 
 else
