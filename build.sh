@@ -44,9 +44,13 @@ while [ "$#" -gt 0 ]; do
         GITHUBUSER_UPSTREAM="${1#*=}"
         echo "GITHUBUSER_UPSTREAM: $GITHUBUSER_UPSTREAM"
         ;;
-    --coreaddupstream=*)
-        ADD_UPSTREAM="${1#*=}"
-        echo "CORE_ADD_UPSTREAM: $ADD_UPSTREAM"
+    --addupstream=*)
+        ADDUPSTREAM="${1#*=}"
+        echo "ADDUPSTREAM: $ADDUPSTREAM"
+        ;;
+    --multisitename=*)
+        MULTISITENAME="${1#*=}"
+        echo "MULTISITENAME: $MULTISITENAME"
         ;;
     --help) print_help;;
     *)
@@ -59,7 +63,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 # done -- TODO: default to checking out develop branch for local/develop builds, and rc branch for staging
-# TODO: implement choice to checkout different branches for each repo
+# not done -- TODO: implement choice to checkout different branches for each repo
 # TODO: implement confirmation questions when buildtype is STAGING as follows:
 # 1. Have you merged the work which you want to test from the develop branch onto rc?
 # 2. Have you pulled any remote changes using the update.sh script?
@@ -68,8 +72,8 @@ done
 # 1. Have you merged the TESTED work which you want to deploy from the rc branch onto master?
 # 2. Have you pulled any remote changes using the update.sh script?
 # 3. Are your working directories clean?
-# TODO: implement build from tag step when buildtype is LIVE
-# TODO: implement create tag step when buildtype is LIVE
+# done -- TODO: implement build from tag step when buildtype is LIVE
+# done -- TODO: implement create tag step when buildtype is LIVE
 
 function removegit {
   # Recursively remove .git and .gitignore files.
@@ -229,29 +233,31 @@ fi
 
 echo "Build type: $BUILDTYPE"
 
-echo -n "
-*************************************************************************
+if [ "x$MULTISITENAME" = "x" ]; then
+  echo -n "
+  *************************************************************************
 
-What is the multisite directory name for this build?
+  What is the multisite directory name for this build?
 
-This will be the directory in sites/ which contains modules, themes and files
-for this build.
+  This will be the directory in sites/ which contains modules, themes and files
+  for this build.
 
-If you leave this blank, you will have to manually create the multisite
-directory from the multisites template (or build it yourself of course).
+  If you leave this blank, you will have to manually create the multisite
+  directory from the multisites template (or build it yourself of course).
 
-You can enter 'default' if you want this site to use the sites/default
-directory, but this will cause problems if you want to deploy this code to a
-dev, staging or live server using these deployment scripts.
+  You can enter 'default' if you want this site to use the sites/default
+  directory, but this will cause problems if you want to deploy this code to a
+  dev, staging or live server using these deployment scripts.
 
-:"
+  :"
 
-read MULTISITENAME
-echo "
+  read MULTISITENAME
+  echo "
 
-Using: $MULTISITENAME.
+  Using: $MULTISITENAME.
 
-"
+  "
+fi
 
 # Remove hyphens from $MULTISITENAME, if any exist.
 MULTISITENAMENOHYPHENS=$(echo "$MULTISITENAME" | sed 's/[\._-]//g')
@@ -316,28 +322,30 @@ elif [[ "$BUILDTYPE" = "LIVE" ]]; then
   fi
 fi
 
-echo -n "
-*************************************************************************
+if [ "x$URI" = "x" ]; then
+  echo -n "
+  *************************************************************************
 
-(Optional) What is the URL of this build of the Drupal site, without
-'http://' - e.g. 'www.example.com'?
+  (Optional) What is the URL of this build of the Drupal site, without
+  'http://' - e.g. 'www.example.com'?
 
-You need to provide this if you want to configure the database connection
-using this script, or have Drupal automagically create the
-settings.this_site_url.info file.
+  You need to provide this if you want to configure the database connection
+  using this script, or have Drupal automagically create the
+  settings.this_site_url.info file.
 
-You must provide this if you are building for a live deployment, unless
-you know that the settings.site_urls.info file contains the live site's
-URL.
+  You must provide this if you are building for a live deployment, unless
+  you know that the settings.site_urls.info file contains the live site's
+  URL.
 
-:"
+  :"
 
-read SITEURI
-echo "
+  read URI
+  echo "
 
-Using: $SITEURI
+  Using: $URI
 
-"
+  "
+fi
 
 # ---
 
@@ -424,7 +432,7 @@ mkdir "$BUILDPATH/build-information"
 # Create files to represent variables.
 echo "$BUILDPATH" > "$BUILDPATH/build-information/BUILDPATH.txt"
 echo "$BUILDTYPE" > "$BUILDPATH/build-information/BUILDTYPE.txt"
-echo "$SITEURI" > "$BUILDPATH/build-information/SITEURI.txt"
+echo "$URI" > "$BUILDPATH/build-information/URI.txt"
 echo "$MULTISITENAME" > "$BUILDPATH/build-information/MULTISITENAME.txt"
 echo "$PROJECTSBRANCH" > "$BUILDPATH/build-information/PROJECTSBRANCH.txt"
 
@@ -506,7 +514,7 @@ fi
 # ---
 
 # Do we know if we're adding an upstream repo to core?
-if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADD_UPSTREAM" = "yes" ] && [ ! "$ADD_UPSTREAM" = "no" ]; then
+if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADDUPSTREAM" = "yes" ] && [ ! "$ADDUPSTREAM" = "no" ]; then
   # Have we been passed in a --githubuser parameter? If not, get it now.
   echo -n "
   *************************************************************************
@@ -520,13 +528,13 @@ if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADD_UPSTREAM" = "yes" ] && [ ! "$ADD_UPS
   old_stty_cfg=$(stty -g)
   stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
   if echo "$answer" | grep -iq "^y" ;then
-    ADD_UPSTREAM="yes"
+    ADDUPSTREAM="yes"
   else
-    ADD_UPSTREAM="no"
+    ADDUPSTREAM="no"
   fi
 fi
 
-if [ "$ADD_UPSTREAM" = "yes" ]; then
+if [ "$ADDUPSTREAM" = "yes" ]; then
   if [ "x$GITHUBUSER_UPSTREAM" = "x" ]; then
     # Add remotes.
     GITHUBUSER_UPSTREAM="$GITHUBUSER_DEFAULT"
@@ -617,7 +625,7 @@ fi
 #    GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
 #  fi
 
-if [ "$ADD_UPSTREAM" = "yes" ]; then
+if [ "$ADDUPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/sites-common"
 
   echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
@@ -700,7 +708,7 @@ Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTIS
 #      GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
 #    fi
 
-  if [ "$ADD_UPSTREAM" = "yes" ]; then
+  if [ "$ADDUPSTREAM" = "yes" ]; then
     cd "$BUILDPATH/multisite-template"
 
     echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
@@ -778,7 +786,7 @@ fi
 #    GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
 #  fi
 
-if [ "$ADD_UPSTREAM" = "yes" ]; then
+if [ "$ADDUPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/multisite-maker"
 
   echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
@@ -854,7 +862,7 @@ fi
 #    GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED"
 #  fi
 
-if [ "$ADD_UPSTREAM" = "yes" ]; then
+if [ "$ADDUPSTREAM" = "yes" ]; then
   cd "$BUILDPATH/scripts-of-usefulness"
 
   echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
@@ -874,7 +882,7 @@ if [ "$ADD_UPSTREAM" = "yes" ]; then
 fi
 
 # Download Drupal 7 core.
-COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --buildpath=$BUILDPATH --drupalversion=7"
+COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
 eval ${COMMAND}
 
 cd "$BUILDPATH"
@@ -1132,6 +1140,10 @@ Y/n: "
 
     ln -s "$MULTISITEPHYSICALLOCATION" "$MULTISITESYMLINKLOCATION"
 
+    # Link a couple of useful scripts into the project directory.
+    ln -s "$BUILDPATH/scripts-of-usefulness/drush-rebuild-registry.sh" "$MULTISITEPHYSICALLOCATION/"
+    ln -s "$BUILDPATH/scripts-of-usefulness/enable-development-settings.sh" "$MULTISITEPHYSICALLOCATION/"
+
     DRUSHALIASNAME="$MULTISITENAME.aliases.drushrc.php"
     DRUSHALIASESDIRECTORY="$BUILDPATH/sites-projects/_drush_aliases"
     DRUSHALIASPHYSICALLOCATION="$DRUSHALIASESDIRECTORY/$DRUSHALIASNAME"
@@ -1191,18 +1203,18 @@ Y/n: "
 
           perl -pi -e "s/{{BUILDPATH-$BUILDTYPE}}/$BUILDPATH/g" "$DRUSHALIASPHYSICALLOCATION"
 
-          if [ "x$SITEURI" = "x" ]; then
+          if [ "x$URI" = "x" ]; then
             echo -n "What is the site URL, without http:// or any trailing slash?: "
-            read SITEURI
+            read URI
           fi
 
-          perl -pi -e "s/{{SITEURI-$BUILDTYPE}}/$SITEURI/g" "$DRUSHALIASPHYSICALLOCATION"
+          perl -pi -e "s/{{URI-$BUILDTYPE}}/$URI/g" "$DRUSHALIASPHYSICALLOCATION"
 
           if [ ! "x$DRUSHREMOTEHOST" = "x" ]; then
             if [ "$BUILDTYPE" = "LOCAL" ]; then
               DRUSHREMOTEHOST="127.0.0.1"
             else
-              echo -n "What is the remote hostname or IP? Leave blank for the default '$SITEURI': "
+              echo -n "What is the remote hostname or IP? Leave blank for the default '$URI': "
               read DRUSHREMOTEHOST
 
               if [ "x$DRUSHREMOTEHOST" = "x" ]; then
@@ -1252,13 +1264,13 @@ Leave blank for the default '$MULTISITENAMENOHYPHENS': "
 #      ln -s "$DRUSHALIASPHYSICALLOCATION" "$BUILDPATH/core/www/sites/all/drush/$DRUSHALIASNAME"
     fi
 
-    if [ ! "x$SITEURI" = "x" ]; then
+    if [ ! "x$URI" = "x" ]; then
       echo "
 *************************************************************************
 
 Creating the settings.this_site_url.info file at $BUILDPATH/sites-projects/$MULTISITENAME/settings.this_site_url.info"
 
-      echo "SETTINGS_SITE_URLS[] = $SITEURI" > "$BUILDPATH/sites-projects/$MULTISITENAME/settings.this_site_url.info"
+      echo "SETTINGS_SITE_URLS[] = $URI" > "$BUILDPATH/sites-projects/$MULTISITENAME/settings.this_site_url.info"
 
       echo "
 
@@ -1540,7 +1552,7 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
       # So, er, yeah. Be careful with this code please...
 
-      CONNECTIONSTRING="'$MULTISITENAME' => array('$SITEURI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
+      CONNECTIONSTRING="'$MULTISITENAME' => array('$URI' => array('database' => '$DBNAME', 'username' => '$DBUSERNAME', 'password' => '$DBPASSWORD', 'port' => '$DBPORT')),"
 
       cd "$BUILDPATH/core"
       echo ${CONNECTIONSTRING} > local_databases.tmp
@@ -1612,10 +1624,9 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
       if echo "$answer" | grep -iq "^y" ;then
         echo "Testing database..."
 
-        cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
-        drush rr --fire-bazooka
-        drush cc all
-        drush status
+        # Run the script which clears caches and rebuilds the registry.
+        COMMAND="$BUILDPATH/scripts-of-usefulness/drush-rebuild-registry.sh --uri=$URI --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
+        eval ${COMMAND}
       else
 
         # Do they want us to install Drupal?
@@ -1649,7 +1660,7 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
           echo -n "
   *************************************************************************
 
-  Should $SITEURI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
+  Should $URI be accessed over http or https? Enter 'http' or 'https', or leave blank for 'https': "
           read PROTOCOL
 
           if [ "x$PROTOCOL" = "x" ]; then
@@ -1673,37 +1684,37 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
 
           cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
 
-          drush --uri="$SITEURI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
+          drush --uri="$URI" site-install minimal --account-name="$ADMINUSERNAME" --account-pass="$ADMINPASS"
 
           echo "
   *************************************************************************
 
   Drupal installed - enabling features..."
 
-          drush --uri="$SITEURI" en features "$FEATURESTOENABLE" -y
+          drush --uri="$URI" en features "$FEATURESTOENABLE" -y
 
           echo "
   *************************************************************************
 
   Reverting features..."
 
-          drush --uri="$SITEURI" fra -y
+          drush --uri="$URI" fra -y
 
           echo "
   *************************************************************************
 
   Clearing caches..."
 
-          drush --uri="$SITEURI" cc all
+          drush --uri="$URI" cc all
 
           # Open the site in a web browser.
-          COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/open-url.sh $PROTOCOL://$SITEURI"
+          COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/open-url.sh $PROTOCOL://$URI"
           eval ${COMMAND}
 
           echo "
   *************************************************************************
 
-  You can now browse your site at $PROTOCOL://$SITEURI - yay!"
+  You can now browse your site at $PROTOCOL://$URI - yay!"
 
         fi
       fi
