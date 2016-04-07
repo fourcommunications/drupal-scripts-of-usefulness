@@ -11,6 +11,9 @@ while [ "$#" -gt 0 ]; do
     --buildpath=*)
         BUILDPATH="${1#*=}"
         ;;
+    --multisitename=*)
+        MULTISITENAME="${1#*=}"
+        ;;
     --drupalversion=*)
         DRUPALVERSION="${1#*=}"
         ;;
@@ -39,7 +42,6 @@ if [ ! -d "$BUILDPATH" ]; then
   print_help
   exit 1
 fi
-
 
 # ---
 
@@ -97,7 +99,7 @@ if [ -e "$HTACCESSPATH" ]; then
 
   cp "$HTACCESSPATH" "$NEWHTACCESSPATH"
 
-  HTACCESSREDIRECTSPATH="$BUILDPATH/multisite-template/htaccess-template-redirects"
+  HTACCESSREDIRECTSPATH="$BUILDPATH/sites-projects/$MULTISITENAME/htaccess-template-redirects"
 
   if [ -e "$HTACCESSREDIRECTSPATH" ]; then
     echo "Copying htaccess redirects from $HTACCESSREDIRECTSPATH into $BUILDPATH/core/www/.htaccess:"
