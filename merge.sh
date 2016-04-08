@@ -76,7 +76,7 @@ Merging $SOURCEBRANCH on to the current branch in $DIRECTORYNAME..."
 
     cd "$DIRECTORYNAME"
 
-    git status
+    git merge "$SOURCEBRANCH"
 
     cd ..
 
