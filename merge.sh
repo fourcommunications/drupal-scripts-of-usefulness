@@ -78,6 +78,9 @@ Merging $SOURCEBRANCH on to the current branch in $DIRECTORYNAME..."
 
     git merge "$SOURCEBRANCH"
 
+    echo "Updating submodules..."
+    git submodule update --recursive
+
     cd ..
 
     echo "Done. Next!
