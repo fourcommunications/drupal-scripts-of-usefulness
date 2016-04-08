@@ -61,6 +61,7 @@ if [ ! "x$BUILDPATH" = "x" ]; then
   cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
 fi
 
+URISTRING=""
 if [ ! "x$URI" = "x" ]; then
   # Also specify the URI for Drush.
   URISTRING="--uri=$URI"

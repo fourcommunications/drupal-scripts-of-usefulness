@@ -4,7 +4,7 @@ clear
 echo -n "
 *************************************************************************
 
-Update a Drupal 7 build
+Updates a Drupal 7 build with changes made to upstream repositories
 
 *************************************************************************
 
