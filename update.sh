@@ -15,10 +15,10 @@ https://github.com/alexharries/drupal-scripts-of-usefulness/blob/master/build.sh
 This script can do the following to update a build - you can choose which of
 these steps you want to run:
 
-1. @TODO: Update any Drupal contrib modules in the sites/all/modules/contrib and
+1. Update Drupal contrib modules in the sites/all/modules/contrib and
    sites/[multisite]/modules/contrib directories.
 
-2. @TODO: Update Drupal core.
+2. Update Drupal core.
 
 3. 'git pull' changes from the parent repositories, and update any
    submodules.
@@ -26,7 +26,7 @@ these steps you want to run:
 4. For forked repos, 'git merge' changes from the upstream source
    repositories, and update any submodules as necessary.
 
-5. 'git push' any changes back up to the parent repositories.
+5. 'git push' any changes back up to the origin and upstream repositories.
 
 *************************************************************************
 
@@ -173,13 +173,38 @@ fi
 
 # ---
 
+# Find out if we're pushing back to upstream.
+PUSHUPSTREAM=0
+echo -n "
+'git push' changes to upstream remotes? Y/n: "
+
+old_stty_cfg=$(stty -g)
+stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+if echo "$answer" | grep -iq "^y" ;then
+  PUSHUPSTREAM=1
+fi
+
+# ---
+
+echo "cd-ing to deploy directory $DEPLOYDIRECTORY."
 cd "$DEPLOYDIRECTORY"
+
+echo "Current directory: $(pwd)
+
+Listing the build directory contents...
+"
+
+ls -la
+
+echo "
+Hopefully that all looked correct...?
+"
 
 # If we're updating Drupal core and/or contrib modules, cd to the multisite
 # directory and run drush up now.
 if [ ! "x$SITEURI" = "x" ]; then
   if [ "$UPDATECORE" = 1 ] || [ "$UPDATECONTRIB" = 1 ]; then
-    cd "$DEPLOYDIRECTORY/core/www/sites/$MULTISITENAME"
+    cd "core/www/sites/$MULTISITENAME"
 
     if [ "$UPDATECORE" = 1 ]; then
       echo "Updating Drupal core..."
@@ -190,22 +215,24 @@ if [ ! "x$SITEURI" = "x" ]; then
       echo "Updating contrib modules..."
       drush --uri="$SITEURI" up --no-core
     fi
+
+    # Cd back to the build directory.
+    cd ../../../..
   fi
 fi
 
 # ---
 
-cd "$DEPLOYDIRECTORY"
-echo "cd-ing to deploy directory $DEPLOYDIRECTORY."
-
 # Create a list of the directories we want to test for and update, if they're
 # present.
-declare -a DIRECTORYNAMES=("core" "multisite-template" "sites-common" "features" "scripts-of-usefulness" "four-features" "sites-projects")
+DIRECTORYNAMES=(core "multisite-template" "sites-common" "features" "scripts-of-usefulness" "four-features" "sites-projects")
 
 for DIRECTORYNAME in "${DIRECTORYNAMES[@]}"
 do
   echo "
-Trying $DIRECTORYNAME..."
+Trying '$DIRECTORYNAME'..."
+
+  echo "Current directory: $(pwd)"
 
   if [ -d "$DIRECTORYNAME" ]; then
     echo "
@@ -250,6 +277,16 @@ Updating $DIRECTORYNAME..."
       if [ "$PUSHORIGIN" = 1 ]; then
         echo "Pushing branch $BRANCH to origin..."
         git push
+      fi
+
+      if [ "$PUSHUPSTREAM" = 1 ]; then
+        # Push upstream
+        if [[ "$PULLUPSTREAM" = 1 && "$GITREMOTES" == *"upstream"* ]]; then
+          echo "Pushing branch $BRANCH to upstream..."
+          git push upstream "$BRANCH"
+        else
+          echo "No upstream remote found."
+        fi
       fi
     else
       echo "
