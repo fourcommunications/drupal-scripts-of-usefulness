@@ -492,24 +492,7 @@ if [ "x$GITHUBUSER_CORE" = "x" ]; then
   fi
 fi
 
-echo "Using: $GITHUBUSER_CORE
-
-Cloning Drupal core branch $PROJECTSBRANCH from $GITHUBUSER_CORE into $BUILDPATH/core ..."
-
-cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" core
-cd "core"
-
-if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit "$BUILDPATH/core"
-else
-  # Ignore file permission changes.
-  git config core.fileMode false
-fi
-
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+echo "Using: $GITHUBUSER_CORE"
 
 # ---
 
@@ -534,358 +517,6 @@ if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADDUPSTREAM" = "yes" ] && [ ! "$ADDUPSTR
   fi
 fi
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  if [ "x$GITHUBUSER_UPSTREAM" = "x" ]; then
-    # Add remotes.
-    GITHUBUSER_UPSTREAM="$GITHUBUSER_DEFAULT"
-    echo -n "
-*************************************************************************
-
-What is the upstream Github account to pull changes from?
-Leave blank to use the default: '$GITHUBUSER_UPSTREAM'
-: "
-
-    read GITHUBUSER_UPSTREAM_ENTERED
-    if [ ! "x$GITHUBUSER_UPSTREAM_ENTERED" = "x" ]; then
-      GITHUBUSER_UPSTREAM="$GITHUBUSER_UPSTREAM_ENTERED"
-    fi
-  fi
-
-  cd "$BUILDPATH/core"
-
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
-
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_core.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
-
-  "
-  git remote -v
-
-  echo "Continuing..."
-fi
-
-# ---
-
-GITHUBUSER_SITES_COMMON="$GITHUBUSER_CORE"
-
-#echo -n "
-#*************************************************************************
-#
-#What is the Github account from which you want to clone the drupal7_sites_common repo? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON'
-#: "
-#read GITHUBUSER_SITES_COMMON_ENTERED
-#if [ ! "x$GITHUBUSER_SITES_COMMON_ENTERED" = "x" ]; then
-#  GITHUBUSER_SITES_COMMON="$GITHUBUSER_SITES_COMMON_ENTERED"
-#fi
-echo "Using: $GITHUBUSER_SITES_COMMON
-
-Cloning Drupal sites common branch $PROJECTSBRANCH from $GITHUBUSER_SITES_COMMON into $BUILDPATH/sites-common ..."
-
-cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" sites-common
-cd "sites-common"
-
-if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit "$BUILDPATH/sites-common"
-else
-  # Ignore file permission changes.
-  git config core.fileMode false
-fi
-
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
-
-# ---
-
-#echo -n "
-#*************************************************************************
-#
-#Do you want to add an upstream remote for drupal7_sites_common? E.g. if this is a
-#forked repo, you can add the fork's source repo so you can then pull in changes
-#by running: git fetch upstream; git checkout master; git merge upstream/master
-#
-#Press Y/n: "
-#
-#old_stty_cfg=$(stty -g)
-#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#if echo "$answer" | grep -iq "^y" ;then
-#  # Add remotes.
-#  GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_UPSTREAM"
-#  echo -n "
-#*************************************************************************
-#
-#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SITES_COMMON_UPSTREAM'
-#: "
-#  read GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED
-#  if [ ! "x$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED" = "x" ]; then
-#    GITHUBUSER_SITES_COMMON_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM_ENTERED"
-#  fi
-
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/sites-common"
-
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
-
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_sites_common.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
-
-  "
-  git remote -v
-
-  echo "
-  Continuing...
-  "
-fi
-
-
-# ---
-
-## Only clone multisite template if this is a LOCAL build.
-# ^ This is wrong. We delete multisite template later; we need it during build
-# to provide the .htaccess template.
-#if [ "$BUILDTYPE" = "LOCAL" ]; then
-
-  GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_SITES_COMMON"
-
-#  echo -n "
-#  *************************************************************************
-#
-#  What is the Github account from which you want to clone the drupal7_multisite_template repo? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE'
-#  : "
-#  read GITHUBUSER_MULTISITE_TEMPLATE_ENTERED
-#  if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED" = "x" ]; then
-#    GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_MULTISITE_TEMPLATE_ENTERED"
-#  fi
-  echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
-
-Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITE_TEMPLATE into $BUILDPATH/multisite-template ..."
-
-  cd "$BUILDPATH"
-  ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" multisite-template
-  cd "multisite-template"
-
-  if [ "x$REMOVEGIT" = "yes" ]; then
-    removegit "$BUILDPATH/multisite-template"
-  else
-    # Ignore file permission changes.
-    git config core.fileMode false
-  fi
-
-  if [ ! "x$CREATETAG" = "x" ]; then
-    createtag "$MULTISITENAME" "$CREATETAG"
-  fi
-
-  # ---
-
-#  echo -n "
-#  *************************************************************************
-#
-#  Do you want to add an upstream remote for drupal7_multisite_template? E.g. if this is a
-#  forked repo, you can add the fork's source repo so you can then pull in changes
-#  by running: git fetch upstream; git checkout master; git merge upstream/master
-#
-#  Y/n: "
-#
-#  old_stty_cfg=$(stty -g)
-#  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#  if echo "$answer" | grep -iq "^y" ;then
-#    # Add remotes.
-#    GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_SITES_COMMON_UPSTREAM"
-#    echo -v "
-#  *************************************************************************
-#
-#  What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM'
-#  : "
-#    read GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED
-#    if [ ! "x$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED" = "x" ]; then
-#      GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM_ENTERED"
-#    fi
-
-  if [ "$ADDUPSTREAM" = "yes" ]; then
-    cd "$BUILDPATH/multisite-template"
-
-    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
-
-    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_multisite_template.git"
-
-    git remote add upstream "$REMOTE"
-
-    echo "Remote '$REMOTE' added. Please check the following output is correct:
-
-    "
-    git remote -v
-
-    echo "
-    Continuing...
-    "
-
-  fi
-#fi
-
-# Now multisitemaker.
-GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_SITES_COMMON"
-
-#echo -n "
-#*************************************************************************
-#
-#What is the Github account from which you want to clone the greyhead_multisitemaker repo? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER'
-#: "
-#read GITHUBUSER_MULTISITEMAKER_ENTERED
-#if [ ! "x$GITHUBUSER_MULTISITEMAKER_ENTERED" = "x" ]; then
-#  GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_MULTISITEMAKER_ENTERED"
-#fi
-echo "Using: $GITHUBUSER_MULTISITEMAKER
-
-Cloning Drupal multisite maker branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITEMAKER into $BUILDPATH/multisite-maker ..."
-
-cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" multisite-maker
-cd "multisite-maker"
-
-if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit "$BUILDPATH/multisite-maker"
-else
-  # Ignore file permission changes.
-  git config core.fileMode false
-fi
-
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
-
-# ---
-
-#echo -n "
-#*************************************************************************
-#
-#Do you want to add an upstream remote for greyhead_multisitemaker? E.g. if this is a
-#forked repo, you can add the fork's source repo so you can then pull in changes
-#by running: git fetch upstream; git checkout master; git merge upstream/master
-#
-#Y/n: "
-#
-#old_stty_cfg=$(stty -g)
-#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#if echo "$answer" | grep -iq "^y" ;then
-#  # Add remotes.
-#  GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
-#  echo -v "
-#*************************************************************************
-#
-#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_MULTISITEMAKER_UPSTREAM'
-#: "
-#  read GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED
-#  if [ ! "x$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED" = "x" ]; then
-#    GITHUBUSER_MULTISITEMAKER_UPSTREAM="$GITHUBUSER_MULTISITEMAKER_UPSTREAM_ENTERED"
-#  fi
-
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/multisite-maker"
-
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
-
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/greyhead_multisitemaker.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
-
-  "
-  git remote -v
-
-  echo "
-  Continuing...
-  "
-fi
-
-# Now drupal-scripts-of-usefulness.
-GITHUBUSER_SCRIPTS="$GITHUBUSER_MULTISITEMAKER"
-
-#echo -n "
-#*************************************************************************
-#
-#What is the Github account from which you want to clone the drupal-scripts-of-usefulness repo? Leave blank to use the default: '$GITHUBUSER_SCRIPTS'
-#: "
-#read GITHUBUSER_SCRIPTS_ENTERED
-#if [ ! "x$GITHUBUSER_SCRIPTS_ENTERED" = "x" ]; then
-#  GITHUBUSER_SCRIPTS="$GITHUBUSER_SCRIPTS_ENTERED"
-#fi
-echo "Using: $GITHUBUSER_SCRIPTS
-
-Cloning scripts of usefulness branch $PROJECTSBRANCH from $GITHUBUSER_SCRIPTS into $BUILDPATH/scripts-of-usefulness ..."
-
-cd "$BUILDPATH"
-${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
-cd "scripts-of-usefulness"
-
-if [ "x$REMOVEGIT" = "yes" ]; then
-  removegit "$BUILDPATH/scripts-of-usefulness"
-else
-  # Ignore file permission changes.
-  git config core.fileMode false
-fi
-
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
-
-# ---
-
-#echo -n "
-#*************************************************************************
-#
-#Do you want to add an upstream remote for drupal-scripts-of-usefulness? E.g. if this is a
-#forked repo, you can add the fork's source repo so you can then pull in changes
-#by running: git fetch upstream; git checkout master; git merge upstream/master
-#
-#Y/n: "
-#
-#old_stty_cfg=$(stty -g)
-#stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-#if echo "$answer" | grep -iq "^y" ;then
-#  # Add remotes.
-#  GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_MULTISITE_TEMPLATE_UPSTREAM"
-#  echo -v "
-#*************************************************************************
-#
-#What is the upstream Github account to pull changes from? Leave blank to use the default: '$GITHUBUSER_SCRIPTS_UPSTREAM'
-#: "
-#  read GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED
-#  if [ ! "x$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED" = "x" ]; then
-#    GITHUBUSER_SCRIPTS_UPSTREAM="$GITHUBUSER_SCRIPTS_UPSTREAM_ENTERED"
-#  fi
-
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/scripts-of-usefulness"
-
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
-
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal-scripts-of-usefulness.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
-
-  "
-  git remote -v
-
-  echo "
-  Continuing...
-  "
-fi
-
-# Download Drupal 7 core.
-COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
-eval ${COMMAND}
-
-cd "$BUILDPATH"
 echo -n "
 *************************************************************************
 
@@ -952,6 +583,307 @@ What is the full clone URL of the repo? : "
     FEATURESCHECKOUT=4
   fi
 fi
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  if [ "x$GITHUBUSER_UPSTREAM" = "x" ]; then
+    # Add remotes.
+    GITHUBUSER_UPSTREAM="$GITHUBUSER_DEFAULT"
+    echo -n "
+*************************************************************************
+
+What is the upstream Github account to pull changes from?
+Leave blank to use the default: '$GITHUBUSER_UPSTREAM'
+: "
+
+    read GITHUBUSER_UPSTREAM_ENTERED
+    if [ ! "x$GITHUBUSER_UPSTREAM_ENTERED" = "x" ]; then
+      GITHUBUSER_UPSTREAM="$GITHUBUSER_UPSTREAM_ENTERED"
+    fi
+  fi
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Start doing.
+
+echo "Cloning Drupal core branch $PROJECTSBRANCH from $GITHUBUSER_CORE into $BUILDPATH/core ..."
+
+cd "$BUILDPATH"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" core
+cd "core"
+
+if [ "x$REMOVEGIT" = "yes" ]; then
+  removegit "$BUILDPATH/core"
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  cd "$BUILDPATH/core"
+
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_core.git"
+
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "Continuing..."
+fi
+
+# ---
+
+GITHUBUSER_SITES_COMMON="$GITHUBUSER_CORE"
+
+echo "Using: $GITHUBUSER_SITES_COMMON
+
+Cloning Drupal sites common branch $PROJECTSBRANCH from $GITHUBUSER_SITES_COMMON into $BUILDPATH/sites-common ..."
+
+cd "$BUILDPATH"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" sites-common
+cd "sites-common"
+
+if [ "x$REMOVEGIT" = "yes" ]; then
+  removegit "$BUILDPATH/sites-common"
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
+# ---
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  cd "$BUILDPATH/sites-common"
+
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_sites_common.git"
+
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "
+  Continuing...
+  "
+fi
+
+
+# ---
+
+## Only clone multisite template if this is a LOCAL build.
+# ^ This is wrong. We delete multisite template later; we need it during build
+# to provide the .htaccess template.
+
+GITHUBUSER_MULTISITE_TEMPLATE="$GITHUBUSER_SITES_COMMON"
+
+echo "Using: $GITHUBUSER_MULTISITE_TEMPLATE
+
+Cloning Drupal multisite template branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITE_TEMPLATE into $BUILDPATH/multisite-template ..."
+
+cd "$BUILDPATH"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" multisite-template
+cd "multisite-template"
+
+if [ "x$REMOVEGIT" = "yes" ]; then
+  removegit "$BUILDPATH/multisite-template"
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
+# ---
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  cd "$BUILDPATH/multisite-template"
+
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_multisite_template.git"
+
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "
+  Continuing...
+  "
+
+fi
+
+# Now multisitemaker.
+GITHUBUSER_MULTISITEMAKER="$GITHUBUSER_SITES_COMMON"
+
+echo "Using: $GITHUBUSER_MULTISITEMAKER
+
+Cloning Drupal multisite maker branch $PROJECTSBRANCH from $GITHUBUSER_MULTISITEMAKER into $BUILDPATH/multisite-maker ..."
+
+cd "$BUILDPATH"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" multisite-maker
+cd "multisite-maker"
+
+if [ "x$REMOVEGIT" = "yes" ]; then
+  removegit "$BUILDPATH/multisite-maker"
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
+# ---
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  cd "$BUILDPATH/multisite-maker"
+
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/greyhead_multisitemaker.git"
+
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "
+  Continuing...
+  "
+fi
+
+# Now drupal-scripts-of-usefulness.
+GITHUBUSER_SCRIPTS="$GITHUBUSER_MULTISITEMAKER"
+
+echo "Using: $GITHUBUSER_SCRIPTS
+
+Cloning scripts of usefulness branch $PROJECTSBRANCH from $GITHUBUSER_SCRIPTS into $BUILDPATH/scripts-of-usefulness ..."
+
+cd "$BUILDPATH"
+${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
+cd "scripts-of-usefulness"
+
+if [ "x$REMOVEGIT" = "yes" ]; then
+  removegit "$BUILDPATH/scripts-of-usefulness"
+else
+  # Ignore file permission changes.
+  git config core.fileMode false
+fi
+
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
+# ---
+
+if [ "$ADDUPSTREAM" = "yes" ]; then
+  cd "$BUILDPATH/scripts-of-usefulness"
+
+  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+
+  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal-scripts-of-usefulness.git"
+
+  git remote add upstream "$REMOTE"
+
+  echo "Remote '$REMOTE' added. Please check the following output is correct:
+
+  "
+  git remote -v
+
+  echo "
+  Continuing...
+  "
+fi
+
+# Download Drupal 7 core.
+COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
+eval ${COMMAND}
+
+cd "$BUILDPATH"
 
 if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
   cd "$BUILDPATH"
