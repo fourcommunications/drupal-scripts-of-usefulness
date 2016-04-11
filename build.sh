@@ -586,15 +586,18 @@ if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "al
 fi
 
 if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
-  if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
-    echo -n "
-  *************************************************************************
+  # Don't ask for Features branch if we have a default.
+  if [ "x$FEATURESCHECKOUTBRANCH_DEFAULT" = "x" ]; then
+    if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+      echo -n "
+    *************************************************************************
 
-  What branch should be checked out for the Features repository? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
-    read FEATURESCHECKOUTBRANCH
+    What branch should be checked out for the Features repository? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
+      read FEATURESCHECKOUTBRANCH
 
-    if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
-      FEATURESCHECKOUTBRANCH="$FEATURESCHECKOUTBRANCH_DEFAULT"
+      if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
+        FEATURESCHECKOUTBRANCH="$FEATURESCHECKOUTBRANCH_DEFAULT"
+      fi
     fi
   fi
 fi
@@ -688,15 +691,18 @@ What is the full clone URL of the repo? : "
 fi
 
 if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
-  if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-    echo -n "
-  *************************************************************************
+  # Don't ask for Projects branch if we have a default.
+  if [ "x$PROJECTSCHECKOUTBRANCH_DEFAULT" = "x" ]; then
+    if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+      echo -n "
+    *************************************************************************
 
-  What branch should be checked out for the Projects repository? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
-    read PROJECTSCHECKOUTBRANCH
+    What branch should be checked out for the Projects repository? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
+      read PROJECTSCHECKOUTBRANCH
 
-    if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
-      PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
+      if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+        PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
+      fi
     fi
   fi
 fi
@@ -769,7 +775,7 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" core
 cd "core"
 
-if [ "x$REMOVEGIT" = "yes" ]; then
+if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/core"
 else
   # Ignore file permission changes.
@@ -809,7 +815,7 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" sites-common
 cd "sites-common"
 
-if [ "x$REMOVEGIT" = "yes" ]; then
+if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/sites-common"
 else
   # Ignore file permission changes.
@@ -858,7 +864,7 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" multisite-template
 cd "multisite-template"
 
-if [ "x$REMOVEGIT" = "yes" ]; then
+if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/multisite-template"
 else
   # Ignore file permission changes.
@@ -902,7 +908,7 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" multisite-maker
 cd "multisite-maker"
 
-if [ "x$REMOVEGIT" = "yes" ]; then
+if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/multisite-maker"
 else
   # Ignore file permission changes.
@@ -945,7 +951,7 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
 cd "scripts-of-usefulness"
 
-if [ "x$REMOVEGIT" = "yes" ]; then
+if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/scripts-of-usefulness"
 else
   # Ignore file permission changes.
@@ -988,7 +994,7 @@ if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "al
   ${GITCLONECOMMAND} --branch "$FEATURESCHECKOUTBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
 
-  if [ "x$REMOVEGIT" = "yes" ]; then
+  if [ "$REMOVEGIT" = "yes" ]; then
     removegit "$BUILDPATH/features"
   else
     # Ignore file permission changes.
@@ -1012,7 +1018,7 @@ if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "al
   ${GITCLONECOMMAND} --branch "$PROJECTSCHECKOUTBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
   cd sites-projects
 
-  if [ "x$REMOVEGIT" = "yes" ]; then
+  if [ "$REMOVEGIT" = "yes" ]; then
     removegit "$BUILDPATH/sites-projects"
   else
     # Ignore file permission changes.
