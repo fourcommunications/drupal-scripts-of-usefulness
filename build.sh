@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-#set -e
+
+# Halt on errors.
+set -e
+
+# Clear the screen.
 clear
 
 # Note the starting directory.
@@ -397,6 +401,11 @@ if [ "x$BUILDPATH" = "x" ]; then
       BUILDPATH="$BUILDPATH_ENTERED"
     else
       BUILDPATH="$BUILDPATH_DEFAULT"
+    fi
+
+    # If it's a live build, append the build archive name to the path.
+    if [ "$BUILDTYPE" = "LIVE" ]; then
+      BUILDPATH="$BUILDPATH/$BUILDARCHIVENAME"
     fi
 
     if [ -d "$BUILDPATH" ]; then
