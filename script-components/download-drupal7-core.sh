@@ -51,6 +51,7 @@ Downloading the latest Drupal $DRUPALVERSION release..."
 
 cd "$COREPATH"
 drush dl "drupal-$DRUPALVERSION" --drupal-project-rename=www -y
+COREPATHABSOLUTE=$(pwd)
 cd "www"
 
 # ---
@@ -72,23 +73,29 @@ rm -rf sites
 
 echo "Symlinking sites to $COREPATH/sites-common:"
 
-ln -s "../../sites-common" "sites"
+ln -s "$COREPATHABSOLUTE/../sites-common" "sites"
 
 # ---
 
-echo "Symlinking profiles/greyheadprofile to ../profiles/greyheadprofile:"
+echo "Symlinking profiles/greyheadprofile to ../../profiles/greyheadprofile:"
 
-ln -s "../../profiles/greyheadprofile" "profiles/greyheadprofile"
-
-# ---
-
-echo "Symlinking profiles/fourprofile to ../profiles/fourprofile:"
-
-ln -s "../../profiles/fourprofile" "profiles/fourprofile"
+ln -s "$COREPATHABSOLUTE/profiles/greyheadprofile" "profiles/greyheadprofile"
 
 # ---
 
-HTACCESSPATH="../../multisite-template/htaccess-template"
+echo "Symlinking profiles/fourprofile to ../../profiles/fourprofile:"
+
+ln -s "$COREPATHABSOLUTE/profiles/fourprofile" "profiles/fourprofile"
+
+# ---
+
+echo "Symlinking sites/$MULTISITENAME to ../../sites-projects/$MULTISITENAME:"
+
+ln -s "$COREPATHABSOLUTE/../sites-projects/$MULTISITENAME" "sites/$MULTISITENAME"
+
+# ---
+
+HTACCESSPATH="$COREPATHABSOLUTE/../multisite-template/htaccess-template"
 
 if [ -e "$HTACCESSPATH" ]; then
   echo "Copying htaccess from $HTACCESSPATH:"
@@ -97,7 +104,7 @@ if [ -e "$HTACCESSPATH" ]; then
 
   cp "$HTACCESSPATH" "$NEWHTACCESSPATH"
 
-  HTACCESSREDIRECTSPATH="../../sites-projects/$MULTISITENAME/htaccess-template-redirects"
+  HTACCESSREDIRECTSPATH="$COREPATHABSOLUTE/../sites-projects/$MULTISITENAME/htaccess-template-redirects"
 
   if [ -e "$HTACCESSREDIRECTSPATH" ]; then
     # Copy the redirects file first, then delete it...
