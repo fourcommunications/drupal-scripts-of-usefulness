@@ -542,32 +542,34 @@ if [ ! "$BUILDTYPE" = "LIVE" ] && [ ! "$ADDUPSTREAM" = "yes" ] && [ ! "$ADDUPSTR
   fi
 fi
 
-echo -n "
-*************************************************************************
+if [ "x$FEATURESCHECKOUT" = "x" ]; then
+  echo -n "
+  *************************************************************************
 
-Which Features repo do you want to clone, if any?
+  Which Features repo do you want to clone, if any?
 
-1. fourcommunications/drupal7_four_features (restricted access)
-2. alexharries/drupal7_common_features (restricted access)
-3. Another git repository and branch of your choosing
-4. No Features checkout.
+  1. fourcommunications/drupal7_four_features (restricted access)
+  2. alexharries/drupal7_common_features (restricted access)
+  3. Another git repository and branch of your choosing
+  4. No Features checkout.
 
-: "
+  : "
 
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^1" ;then
-  # fourcomms
-  FEATURESCHECKOUT="fourcommunications"
-elif echo "$answer" | grep -iq "^2" ;then
-  # alexharries
-  FEATURESCHECKOUT="alexharries"
-elif echo "$answer" | grep -iq "^3" ;then
-  # other
-  FEATURESCHECKOUT="custom"
-elif echo "$answer" | grep -iq "^4" ;then
-  # none
-  FEATURESCHECKOUT="none"
+  old_stty_cfg=$(stty -g)
+  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+  if echo "$answer" | grep -iq "^1" ;then
+    # fourcomms
+    FEATURESCHECKOUT="fourcommunications"
+  elif echo "$answer" | grep -iq "^2" ;then
+    # alexharries
+    FEATURESCHECKOUT="alexharries"
+  elif echo "$answer" | grep -iq "^3" ;then
+    # other
+    FEATURESCHECKOUT="custom"
+  elif echo "$answer" | grep -iq "^4" ;then
+    # none
+    FEATURESCHECKOUT="none"
+  fi
 fi
 
 if [ "$FEATURESCHECKOUT" = "fourcommunications" ]; then
@@ -624,6 +626,77 @@ Leave blank to use the default: '$GITHUBUSER_UPSTREAM'
     read GITHUBUSER_UPSTREAM_ENTERED
     if [ ! "x$GITHUBUSER_UPSTREAM_ENTERED" = "x" ]; then
       GITHUBUSER_UPSTREAM="$GITHUBUSER_UPSTREAM_ENTERED"
+    fi
+  fi
+fi
+
+if [ "x$PROJECTSCHECKOUT" = "x" ]; then
+  echo -n "
+  *************************************************************************
+
+  Please choose which drupal7_sites_projects directory you want to check
+  out or create:
+
+  1. fourcommunications/drupal7_sites_projects (restricted access)
+  2. alexharries/drupal7_sites_projects (restricted access)
+  3. Another git repository and branch of your choosing
+  4. No checkout - just create a directory (you're responsible for saving)
+
+  : "
+
+  old_stty_cfg=$(stty -g)
+  stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
+  if echo "$answer" | grep -iq "^1" ;then
+    # fourcomms
+    PROJECTSCHECKOUT="fourcommunications"
+  elif echo "$answer" | grep -iq "^2" ;then
+    # alexharries
+    PROJECTSCHECKOUT="alexharries"
+  elif echo "$answer" | grep -iq "^3" ;then
+    # other
+    PROJECTSCHECKOUT="custom"
+  elif echo "$answer" | grep -iq "^4" ;then
+    # none
+    PROJECTSCHECKOUT="create"
+  fi
+fi
+
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ]; then
+  PROJECTSCLONEURL="git@github.com:fourcommunications/drupal7_sites_projects.git"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
+  PROJECTSCLONEURL="git@github.com:alexharries/drupal7_sites_projects.git"
+fi
+
+# Work out what branch we want to check out our project files from.
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
+  PROJECTSCHECKOUTBRANCH_DEFAULT="$PROJECTSBRANCH"
+fi
+
+if [ "$PROJECTSCHECKOUT" = "custom" ]; then
+  echo -n "
+*************************************************************************
+
+What is the full clone URL of the repo? : "
+  read PROJECTSCLONEURL
+
+  if [ "x$PROJECTSCLONEURL" = "x" ]; then
+    echo "No URL entered - cancelling and will create an empty dir instead."
+    PROJECTSCHECKOUT="create"
+  fi
+fi
+
+if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+  if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+    echo -n "
+  *************************************************************************
+
+  What branch should be checked out? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
+    read PROJECTSCHECKOUTBRANCH
+
+    if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+      PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
     fi
   fi
 fi
@@ -933,79 +1006,10 @@ fi
 
 # sites-projects
 
-cd "$BUILDPATH"
-echo -n "
-*************************************************************************
-
-Please choose which drupal7_sites_projects directory you want to check
-out or create:
-
-1. fourcommunications/drupal7_sites_projects (restricted access)
-2. alexharries/drupal7_sites_projects (restricted access)
-3. Another git repository and branch of your choosing
-4. No checkout - just create a directory (you're responsible for saving)
-
-: "
-
-old_stty_cfg=$(stty -g)
-stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
-if echo "$answer" | grep -iq "^1" ;then
-  # fourcomms
-  PROJECTSCHECKOUT="fourcommunications"
-elif echo "$answer" | grep -iq "^2" ;then
-  # alexharries
-  PROJECTSCHECKOUT="alexharries"
-elif echo "$answer" | grep -iq "^3" ;then
-  # other
-  PROJECTSCHECKOUT="custom"
-elif echo "$answer" | grep -iq "^4" ;then
-  # none
-  PROJECTSCHECKOUT="create"
-fi
-
-if [ "$PROJECTSCHECKOUT" = "fourcommunications" ]; then
-  PROJECTSCLONEURL="git@github.com:fourcommunications/drupal7_sites_projects.git"
-fi
-
-if [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
-  PROJECTSCLONEURL="git@github.com:alexharries/drupal7_sites_projects.git"
-fi
-
-# Work out what branch we want to check out our project files from.
-if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
-  PROJECTSCHECKOUTBRANCH_DEFAULT="$PROJECTSBRANCH"
-fi
-
-if [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  echo -n "
-*************************************************************************
-
-What is the full clone URL of the repo? : "
-  read PROJECTSCLONEURL
-
-  if [ "x$PROJECTSCLONEURL" = "x" ]; then
-    echo "No URL entered - cancelling and will create an empty dir instead."
-    PROJECTSCHECKOUT="create"
-  fi
-fi
-
-if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
-  if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-    echo -n "
-  *************************************************************************
-
-  What branch should be checked out? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
-    read PROJECTSCHECKOUTBRANCH
-
-    if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
-      PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
-    fi
-  fi
-fi
-
 if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo "Checking out $PROJECTSCLONEURL to sites-projects..."
 
+  cd "$BUILDPATH"
   ${GITCLONECOMMAND} --branch "$PROJECTSCHECKOUTBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
   cd sites-projects
 
