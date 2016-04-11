@@ -1689,6 +1689,8 @@ fi
 # If we're building for live, move the directories around and create the tar.gz
 # archive.
 if [ "$BUILDTYPE" = "LIVE" ]; then
+  echo "Moving files around for live..."
+
 #  This is the directory structure we have - a . indicates the directory needs
 #  to be moved, if it exists.
 #
@@ -1753,7 +1755,7 @@ if [ "$BUILDTYPE" = "LIVE" ]; then
     fi
 
     # Move features to core/www/sites/all/features.
-    mv "$BUILDPATH/features core/www/sites/all/modules/features"
+    mv "$BUILDPATH/features" "$BUILDPATH/core/www/sites/all/modules/features"
   fi
 
   # If sites-projects/$MULTISITENAME is present.
