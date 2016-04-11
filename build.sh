@@ -20,43 +20,51 @@ STARTINGDIRECTORY=$(pwd)
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --buildtype=*)
-        BUILDTYPE="${1#*=}"
-        echo "Build type: $BUILDTYPE"
-        ;;
+      BUILDTYPE="${1#*=}"
+      echo "Build type: $BUILDTYPE"
+    ;;
     --buildfromtag=*)
-        BUILDFROMTAG="${1#*=}"
-        echo "Building from tag: $BUILDFROMTAG"
-        ;;
+      BUILDFROMTAG="${1#*=}"
+      echo "Building from tag: $BUILDFROMTAG"
+    ;;
     --createtag=*)
-        CREATETAG="${1#*=}"
-        echo "Creating tag : $CREATETAG"
-        ;;
+      CREATETAG="${1#*=}"
+      echo "Creating tag : $CREATETAG"
+    ;;
     --buildpath=*)
-        BUILDPATH="${1#*=}"
-        echo "Build path: $BUILDPATH"
-        ;;
+      BUILDPATH="${1#*=}"
+      echo "Build path: $BUILDPATH"
+    ;;
     --filespath=*)
-        FILESPATH="${1#*=}"
-        echo "FILESPATH: $FILESPATH"
-        ;;
-# TODO: Other fields to be added: GITHUBUSER_CORE, ADD_UPSTREAM, GITHUBUSER_UPSTREAM,
+      FILESPATH="${1#*=}"
+      echo "FILESPATH: $FILESPATH"
+    ;;
+  # TODO: Other fields to be added: GITHUBUSER_CORE, ADD_UPSTREAM, GITHUBUSER_UPSTREAM,
     --githubuser=*)
-        GITHUBUSER_CORE="${1#*=}"
-        echo "GITHUBUSER_CORE: $GITHUBUSER_CORE"
-        ;;
+      GITHUBUSER_CORE="${1#*=}"
+      echo "GITHUBUSER_CORE: $GITHUBUSER_CORE"
+    ;;
     --githubuserupstream=*)
-        GITHUBUSER_UPSTREAM="${1#*=}"
-        echo "GITHUBUSER_UPSTREAM: $GITHUBUSER_UPSTREAM"
-        ;;
+      GITHUBUSER_UPSTREAM="${1#*=}"
+      echo "GITHUBUSER_UPSTREAM: $GITHUBUSER_UPSTREAM"
+    ;;
     --addupstream=*)
-        ADDUPSTREAM="${1#*=}"
-        echo "ADDUPSTREAM: $ADDUPSTREAM"
-        ;;
+      ADDUPSTREAM="${1#*=}"
+      echo "ADDUPSTREAM: $ADDUPSTREAM"
+    ;;
     --multisitename=*)
-        MULTISITENAME="${1#*=}"
-        echo "MULTISITENAME: $MULTISITENAME"
-        ;;
-    --help) print_help;;
+      MULTISITENAME="${1#*=}"
+      echo "MULTISITENAME: $MULTISITENAME"
+    ;;
+    --featurescheckout=*)
+      FEATURESCHECKOUT="${1#*=}"
+      echo "FEATURESCHECKOUT: $FEATURESCHECKOUT"
+    ;;
+    --projectscheckout=*)
+      PROJECTSCHECKOUT="${1#*=}"
+      echo "PROJECTSCHECKOUT: $PROJECTSCHECKOUT"
+    ;;
+    --help) print_help ;;
     *)
       printf "***********************************************************\n"
       printf "* Error: Invalid argument '$1', run --help for valid arguments. *\n"
@@ -542,7 +550,7 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^1" ;then
   # fourcomms
-  FEATURESCHECKOUT="four"
+  FEATURESCHECKOUT="fourcommunications"
 elif echo "$answer" | grep -iq "^2" ;then
   # alexharries
   FEATURESCHECKOUT="alexharries"
@@ -554,7 +562,7 @@ elif echo "$answer" | grep -iq "^4" ;then
   FEATURESCHECKOUT="none"
 fi
 
-if [ "$FEATURESCHECKOUT" = "four" ]; then
+if [ "$FEATURESCHECKOUT" = "fourcommunications" ]; then
   FEATURESCLONEURL="git@github.com:fourcommunications/drupal7_four_features.git"
 fi
 
@@ -563,11 +571,11 @@ if [ "$FEATURESCHECKOUT" = "alexharries" ]; then
 fi
 
 # Work out what branch we want to check out our project files from.
-if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ]; then
+if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ]; then
   CUSTOMFEATURESBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
-if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
   echo -n "
 *************************************************************************
 
@@ -894,7 +902,7 @@ eval ${COMMAND}
 
 cd "$BUILDPATH"
 
-if [ "$FEATURESCHECKOUT" = "four" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
   cd "$BUILDPATH"
   ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
@@ -934,7 +942,7 @@ old_stty_cfg=$(stty -g)
 stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Care playing with stty
 if echo "$answer" | grep -iq "^1" ;then
   # fourcomms
-  PROJECTSCHECKOUT="four"
+  PROJECTSCHECKOUT="fourcommunications"
 elif echo "$answer" | grep -iq "^2" ;then
   # alexharries
   PROJECTSCHECKOUT="alexharries"
@@ -946,7 +954,7 @@ elif echo "$answer" | grep -iq "^4" ;then
   PROJECTSCHECKOUT="create"
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ]; then
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ]; then
   PROJECTSCLONEURL="git@github.com:fourcommunications/drupal7_sites_projects.git"
 fi
 
@@ -955,7 +963,7 @@ if [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
 fi
 
 # Work out what branch we want to check out our project files from.
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
   CUSTOMPROJECTSBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
@@ -972,7 +980,7 @@ What is the full clone URL of the repo? : "
   fi
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo -n "
 *************************************************************************
 
@@ -984,7 +992,7 @@ What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRAN
   fi
 fi
 
-if [ "$PROJECTSCHECKOUT" = "four" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo "Checking out $PROJECTSCLONEURL to sites-projects..."
 
   ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
@@ -1611,7 +1619,7 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
           FEATURESTOENABLE="drupal_search paragraph_page development_settings backup_migrate_daily"
 
           # Do they want to enable four_communications_base_modules?
-          if [ "$FEATURESCHECKOUT" = "four" ]; then
+          if [ "$FEATURESCHECKOUT" = "fourcommunications" ]; then
             FEATURESTOENABLE="$FEATURESTOENABLE four_communications_base_modules fourcomms_update_notifications four_communications_user_roles four_login_toboggan_settings"
           # Otherwise, do they want to enable common_base_modules?
           elif [ -d "$BUILDPATH/features/common_base_modules" ]; then
