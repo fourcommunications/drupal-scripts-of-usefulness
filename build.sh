@@ -60,9 +60,17 @@ while [ "$#" -gt 0 ]; do
       FEATURESCHECKOUT="${1#*=}"
       echo "FEATURESCHECKOUT: $FEATURESCHECKOUT"
     ;;
+    --featurescheckoutbranch=*)
+      FEATURESCHECKOUTBRANCH="${1#*=}"
+      echo "FEATURESCHECKOUTBRANCH: $FEATURESCHECKOUTBRANCH"
+    ;;
     --projectscheckout=*)
       PROJECTSCHECKOUT="${1#*=}"
       echo "PROJECTSCHECKOUT: $PROJECTSCHECKOUT"
+    ;;
+    --projectscheckoutbranch=*)
+      PROJECTSCHECKOUTBRANCH="${1#*=}"
+      echo "PROJECTSCHECKOUTBRANCH: $PROJECTSCHECKOUTBRANCH"
     ;;
     --help) print_help ;;
     *)
@@ -572,20 +580,21 @@ fi
 
 # Work out what branch we want to check out our project files from.
 if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ]; then
-  CUSTOMFEATURESBRANCH_DEFAULT="$PROJECTSBRANCH"
+  FEATURESCHECKOUTBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
-if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
-  echo -n "
-*************************************************************************
+if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
+  if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+    echo -n "
+  *************************************************************************
 
-What branch should be checked out? (Leave blank for default '$CUSTOMFEATURESBRANCH_DEFAULT') : "
-  read CUSTOMFEATURESBRANCH
+  What branch should be checked out? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
+    read FEATURESCHECKOUTBRANCH
 
-  if [ "x$CUSTOMFEATURESBRANCH" = "x" ]; then
-    CUSTOMFEATURESBRANCH="$CUSTOMFEATURESBRANCH_DEFAULT"
+    if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
+      FEATURESCHECKOUTBRANCH="$FEATURESCHECKOUTBRANCH_DEFAULT"
+    fi
   fi
-
 fi
 
 if [ "$FEATURESCHECKOUT" = "custom" ]; then
@@ -597,7 +606,7 @@ What is the full clone URL of the repo? : "
 
   if [ "x$FEATURESCLONEURL" = "x" ]; then
     echo "No URL entered - cancelling and will create an empty dir instead."
-    FEATURESCHECKOUT=4
+    FEATURESCHECKOUT="create"
   fi
 fi
 
@@ -904,7 +913,7 @@ cd "$BUILDPATH"
 
 if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
   cd "$BUILDPATH"
-  ${GITCLONECOMMAND} --branch "$CUSTOMFEATURESBRANCH" --recursive "$FEATURESCLONEURL" features
+  ${GITCLONECOMMAND} --branch "$FEATURESCHECKOUTBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
 
   if [ "x$REMOVEGIT" = "yes" ]; then
@@ -964,7 +973,7 @@ fi
 
 # Work out what branch we want to check out our project files from.
 if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ]; then
-  CUSTOMPROJECTSBRANCH_DEFAULT="$PROJECTSBRANCH"
+  PROJECTSCHECKOUTBRANCH_DEFAULT="$PROJECTSBRANCH"
 fi
 
 if [ "$PROJECTSCHECKOUT" = "custom" ]; then
@@ -976,26 +985,28 @@ What is the full clone URL of the repo? : "
 
   if [ "x$PROJECTSCLONEURL" = "x" ]; then
     echo "No URL entered - cancelling and will create an empty dir instead."
-    PROJECTSCHECKOUT=4
+    PROJECTSCHECKOUT="create"
   fi
 fi
 
-if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
-  echo -n "
-*************************************************************************
+if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+  if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
+    echo -n "
+  *************************************************************************
 
-What branch should be checked out? (Leave blank for default '$CUSTOMPROJECTSBRANCH_DEFAULT') : "
-  read CUSTOMPROJECTSBRANCH
+  What branch should be checked out? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
+    read PROJECTSCHECKOUTBRANCH
 
-  if [ "x$CUSTOMPROJECTSBRANCH" = "x" ]; then
-    CUSTOMPROJECTSBRANCH="$CUSTOMPROJECTSBRANCH_DEFAULT"
+    if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+      PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
+    fi
   fi
 fi
 
 if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "alexharries" ] || [ "$PROJECTSCHECKOUT" = "custom" ]; then
   echo "Checking out $PROJECTSCLONEURL to sites-projects..."
 
-  ${GITCLONECOMMAND} --branch "$CUSTOMPROJECTSBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
+  ${GITCLONECOMMAND} --branch "$PROJECTSCHECKOUTBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
   cd sites-projects
 
   if [ "x$REMOVEGIT" = "yes" ]; then
