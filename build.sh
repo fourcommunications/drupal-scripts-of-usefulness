@@ -55,7 +55,7 @@ while [ "$#" -gt 0 ]; do
     --help) print_help;;
     *)
       printf "***********************************************************\n"
-      printf "* Error: Invalid argument '${1#*=}', run --help for valid arguments. *\n"
+      printf "* Error: Invalid argument '$1', run --help for valid arguments. *\n"
       printf "***********************************************************\n"
       exit 1
   esac
@@ -880,7 +880,7 @@ if [ "$ADDUPSTREAM" = "yes" ]; then
 fi
 
 # Download Drupal 7 core.
-COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
+COMMAND="$BUILDPATH/scripts-of-usefulness/script-components/download-drupal7-core.sh --multisitename=$MULTISITENAME --corepath=$BUILDPATH/core --drupalversion=7"
 eval ${COMMAND}
 
 cd "$BUILDPATH"
