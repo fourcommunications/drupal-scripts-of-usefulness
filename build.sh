@@ -590,7 +590,7 @@ if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
     echo -n "
   *************************************************************************
 
-  What branch should be checked out? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
+  What branch should be checked out for the Features repository? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
     read FEATURESCHECKOUTBRANCH
 
     if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
@@ -692,7 +692,7 @@ if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
     echo -n "
   *************************************************************************
 
-  What branch should be checked out? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
+  What branch should be checked out for the Projects repository? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
     read PROJECTSCHECKOUTBRANCH
 
     if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
@@ -700,7 +700,6 @@ if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
     fi
   fi
 fi
-
 
 
 
