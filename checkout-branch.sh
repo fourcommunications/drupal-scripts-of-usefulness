@@ -101,7 +101,7 @@ Checking out branch $NEWBRANCH in $DIRECTORYNAME..."
       echo "Working directory appears clean - nothing to commit - so we'll try to fetch and check out the branch..."
 
       git fetch
-      git checkout "$NEWBRANCH"
+      git checkout -b "$NEWBRANCH" "remotes/origin/$NEWBRANCH"
     else
       echo "
       ---
