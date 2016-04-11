@@ -633,6 +633,11 @@ Leave blank to use the default: '$GITHUBUSER_UPSTREAM'
   fi
 fi
 
+# Don't allow adding upstream if $GITHUBUSER_UPSTREAM is empty.
+if [ "$ADDUPSTREAM" = "yes" ] && [ "x$GITHUBUSER_UPSTREAM" = "x" ]; then
+  ADDUPSTREAM="no"
+fi
+
 if [ "x$PROJECTSCHECKOUT" = "x" ]; then
   echo -n "
   *************************************************************************
@@ -775,32 +780,32 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_CORE/drupal7_core.git" core
 cd "core"
 
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
 if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/core"
 else
   # Ignore file permission changes.
   git config core.fileMode false
-fi
 
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+  if [ "$ADDUPSTREAM" = "yes" ]; then
+    cd "$BUILDPATH/core"
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/core"
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_core.git"
 
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_core.git"
+    git remote add upstream "$REMOTE"
 
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
-  git remote -v
+    git remote -v
 
-  echo "Continuing..."
+    echo "Continuing..."
+  fi
 fi
 
 # ---
@@ -815,38 +820,35 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SITES_COMMON/drupal7_sites_common.git" sites-common
 cd "sites-common"
 
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
 if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/sites-common"
 else
   # Ignore file permission changes.
   git config core.fileMode false
-fi
 
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+  if [ "$ADDUPSTREAM" = "yes" ]; then
+    cd "$BUILDPATH/sites-common"
 
-# ---
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/sites-common"
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_sites_common.git"
 
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+    git remote add upstream "$REMOTE"
 
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_sites_common.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
-  git remote -v
+    git remote -v
 
-  echo "
+    echo "
   Continuing...
   "
+  fi
 fi
-
 
 # ---
 
@@ -864,37 +866,34 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITE_TEMPLATE/drupal7_multisite_template.git" multisite-template
 cd "multisite-template"
 
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
 if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/multisite-template"
 else
   # Ignore file permission changes.
   git config core.fileMode false
-fi
 
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+  if [ "$ADDUPSTREAM" = "yes" ]; then
+    cd "$BUILDPATH/multisite-template"
 
-# ---
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/multisite-template"
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_multisite_template.git"
 
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+    git remote add upstream "$REMOTE"
 
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal7_multisite_template.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
-  git remote -v
+    git remote -v
 
-  echo "
+    echo "
   Continuing...
   "
-
+  fi
 fi
 
 # Now multisitemaker.
@@ -908,36 +907,34 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_MULTISITEMAKER/greyhead_multisitemaker.git" multisite-maker
 cd "multisite-maker"
 
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
 if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/multisite-maker"
 else
   # Ignore file permission changes.
   git config core.fileMode false
-fi
 
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+  if [ "$ADDUPSTREAM" = "yes" ]; then
+    cd "$BUILDPATH/multisite-maker"
 
-# ---
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/multisite-maker"
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/greyhead_multisitemaker.git"
 
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+    git remote add upstream "$REMOTE"
 
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/greyhead_multisitemaker.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
-  git remote -v
+    git remote -v
 
-  echo "
+    echo "
   Continuing...
   "
+  fi
 fi
 
 # Now drupal-scripts-of-usefulness.
@@ -951,36 +948,34 @@ cd "$BUILDPATH"
 ${GITCLONECOMMAND} --branch "$PROJECTSBRANCH" --recursive "git@github.com:$GITHUBUSER_SCRIPTS/drupal-scripts-of-usefulness.git" scripts-of-usefulness
 cd "scripts-of-usefulness"
 
+if [ ! "x$CREATETAG" = "x" ]; then
+  createtag "$MULTISITENAME" "$CREATETAG"
+fi
+
 if [ "$REMOVEGIT" = "yes" ]; then
   removegit "$BUILDPATH/scripts-of-usefulness"
 else
   # Ignore file permission changes.
   git config core.fileMode false
-fi
 
-if [ ! "x$CREATETAG" = "x" ]; then
-  createtag "$MULTISITENAME" "$CREATETAG"
-fi
+  if [ "$ADDUPSTREAM" = "yes" ]; then
+    cd "$BUILDPATH/scripts-of-usefulness"
 
-# ---
+    echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
 
-if [ "$ADDUPSTREAM" = "yes" ]; then
-  cd "$BUILDPATH/scripts-of-usefulness"
+    REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal-scripts-of-usefulness.git"
 
-  echo "Using: $GITHUBUSER_UPSTREAM. Adding remote..."
+    git remote add upstream "$REMOTE"
 
-  REMOTE="git@github.com:$GITHUBUSER_UPSTREAM/drupal-scripts-of-usefulness.git"
-
-  git remote add upstream "$REMOTE"
-
-  echo "Remote '$REMOTE' added. Please check the following output is correct:
+    echo "Remote '$REMOTE' added. Please check the following output is correct:
 
   "
-  git remote -v
+    git remote -v
 
-  echo "
+    echo "
   Continuing...
   "
+  fi
 fi
 
 # Download Drupal 7 core.
@@ -994,15 +989,15 @@ if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "al
   ${GITCLONECOMMAND} --branch "$FEATURESCHECKOUTBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
 
+  if [ ! "x$CREATETAG" = "x" ]; then
+    createtag "$MULTISITENAME" "$CREATETAG"
+  fi
+
   if [ "$REMOVEGIT" = "yes" ]; then
     removegit "$BUILDPATH/features"
   else
     # Ignore file permission changes.
     git config core.fileMode false
-  fi
-
-  if [ ! "x$CREATETAG" = "x" ]; then
-    createtag "$MULTISITENAME" "$CREATETAG"
   fi
 
   # Link core/www/sites/all/modules/features to $BUILDPATH/features
@@ -1018,15 +1013,15 @@ if [ "$PROJECTSCHECKOUT" = "fourcommunications" ] || [ "$PROJECTSCHECKOUT" = "al
   ${GITCLONECOMMAND} --branch "$PROJECTSCHECKOUTBRANCH" --recursive "$PROJECTSCLONEURL" sites-projects
   cd sites-projects
 
+  if [ ! "x$CREATETAG" = "x" ]; then
+    createtag "$MULTISITENAME" "$CREATETAG"
+  fi
+
   if [ "$REMOVEGIT" = "yes" ]; then
     removegit "$BUILDPATH/sites-projects"
   else
     # Ignore file permission changes.
     git config core.fileMode false
-  fi
-
-  if [ ! "x$CREATETAG" = "x" ]; then
-    createtag "$MULTISITENAME" "$CREATETAG"
   fi
 fi
 
