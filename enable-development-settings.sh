@@ -33,17 +33,11 @@ Parameters:
 Options: --uri=$URI
 "
 
-URISTRING=""
-if [ ! "x$URI" = "x" ]; then
-  # Also specify the URI for Drush.
-  URISTRING="--uri=$URI"
-fi
-
 echo "Disabling production_settings, boost_config, and advagg settings, and enabling development_settings, and reverting the development_settings feature."
 
-drush "$URISTRING" dis production_settings advanced_aggregation_settings advagg boost_config boost -y
-drush "$URISTRING" en development_settings -y
-drush "$URISTRING" fr development_settings -y
-drush "$URISTRING" cc all
+drush dis production_settings advanced_aggregation_settings advagg boost_config boost -y --uri="$URI"
+drush en development_settings -y --uri="$URI"
+drush fr development_settings -y --uri="$URI"
+drush cc all
 
 echo "All done."
