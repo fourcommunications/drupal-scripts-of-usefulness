@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Halt on errors.
-set -e
+#set -e
 
 # Clear the screen.
 clear
@@ -594,11 +594,11 @@ if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
 
     What branch should be checked out for the Features repository? (Leave blank for default '$FEATURESCHECKOUTBRANCH_DEFAULT') : "
       read FEATURESCHECKOUTBRANCH
-
-      if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
-        FEATURESCHECKOUTBRANCH="$FEATURESCHECKOUTBRANCH_DEFAULT"
-      fi
     fi
+  fi
+
+  if [ "x$FEATURESCHECKOUTBRANCH" = "x" ]; then
+    FEATURESCHECKOUTBRANCH="$FEATURESCHECKOUTBRANCH_DEFAULT"
   fi
 fi
 
@@ -704,11 +704,11 @@ if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
 
     What branch should be checked out for the Projects repository? (Leave blank for default '$PROJECTSCHECKOUTBRANCH_DEFAULT') : "
       read PROJECTSCHECKOUTBRANCH
-
-      if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
-        PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
-      fi
     fi
+  fi
+
+  if [ "x$PROJECTSCHECKOUTBRANCH" = "x" ]; then
+    PROJECTSCHECKOUTBRANCH="$PROJECTSCHECKOUTBRANCH_DEFAULT"
   fi
 fi
 
@@ -985,6 +985,8 @@ eval ${COMMAND}
 cd "$BUILDPATH"
 
 if [ "$FEATURESCHECKOUT" = "fourcommunications" ] || [ "$FEATURESCHECKOUT" = "alexharries" ] || [ "$FEATURESCHECKOUT" = "custom" ]; then
+  echo "Checking out $FEATURESCLONEURL to features..."
+
   cd "$BUILDPATH"
   ${GITCLONECOMMAND} --branch "$FEATURESCHECKOUTBRANCH" --recursive "$FEATURESCLONEURL" features
   cd features
@@ -1589,7 +1591,7 @@ if [ ! "$BUILDTYPE" = "LIVE" ]; then
         echo "Testing database..."
 
         # Run the script which clears caches and rebuilds the registry.
-        COMMAND="$BUILDPATH/scripts-of-usefulness/drush-rebuild-registry.sh --uri=$URI --multisitename=$MULTISITENAME --buildpath=$BUILDPATH --drupalversion=7"
+        COMMAND="$BUILDPATH/scripts-of-usefulness/drush-rebuild-registry.sh --uri=$URI --multisitename=$MULTISITENAME --buildpath=$BUILDPATH"
         eval ${COMMAND}
       else
 
