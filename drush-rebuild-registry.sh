@@ -61,27 +61,21 @@ if [ ! "x$BUILDPATH" = "x" ]; then
   cd "$BUILDPATH/core/www/sites/$MULTISITENAME"
 fi
 
-URISTRING=""
-if [ ! "x$URI" = "x" ]; then
-  # Also specify the URI for Drush.
-  URISTRING="--uri=$URI"
-fi
-
 # Forcibly wipe the cache tables; this step is run before any others
 # make sure any cached CTools include paths are regenerated.
-drush "$URISTRING" sqlq 'truncate table cache'
+drush sqlq 'truncate table cache' --uri="$URI"
 
 # Now we run drush cc all, before we rebuild the registry; this is
 # yet another CTools workaround.
-drush "$URISTRING" cc all
+drush cc all --uri="$URI"
 
 # At last, we can reset the registry, which should avoid any annoying
 # 500 errors if anything's been moved.
-drush "$URISTRING" rr --fire-bazooka
+drush rr --fire-bazooka --uri="$URI"
 
 # Clear caches and get a status report.
-drush "$URISTRING" cc all
-drush "$URISTRING" status
+drush cc all --uri="$URI"
+drush status --uri="$URI"
 
 echo "Rebuild of registry complete. Yay!
 ***
